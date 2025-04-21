@@ -1,6 +1,5 @@
 # KDist: A Collection of Kernel and Distance Methods for Statistical Inference
 
-[![R-CMD-check](https://github.com/zhangxiany-tamu/KDist/workflows/R-CMD-check/badge.svg)](https://github.com/zhangxiany-tamu/KDist/actions)
 [![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/KDist)](https://cran.r-project.org/package=KDist)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
