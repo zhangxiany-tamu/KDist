@@ -1,0 +1,23 @@
+Package: KDist
+Title: A Collection of Kernel and Distance Methods for Statistical Inference
+Version: 0.1.0
+Authors@R: 
+    person(given = "Xianyang",
+           family = "Zhang",
+           role = c("aut", "cre"),
+           email = "zhangxiany@stat.tamu.edu")
+Description: This package offers a comprehensive toolkit for kernel and distance-based methods in statistical inference. It implements various statistical inference procedures based on generalized energy distance, maximum mean discrepancy (MMD), generalized distance covariance, and the Hilbert-Schmidt Independence Criterion (HSIC). It also features dHSIC, high-order HSIC, joint HSIC, kernel/distance-based MANOVA, and high-dimensional independence/two-sample t-tests. The toolkit also includes methods for conditional independence/two-sample testing, as well as change-point detection.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports: 
+    stats,
+    parallel
+LinkingTo: 
+    Rcpp,
+    RcppArmadillo
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
