@@ -20,7 +20,7 @@ You can install the development version from GitHub:
 
 ```r
 # install.packages("devtools")
-devtools::install_github("YourUsername/KDistTest")
+devtools::install_github("zhangxiany-tamu/KDist")
 ```
 
 ## Key Features
