@@ -7,7 +7,7 @@
 hsic(
   x,
   y,
-  type = "euclidean",
+  type = "gaussian",
   bw = NULL,
   expo = 1,
   scale_factor = 0.5,
@@ -29,7 +29,10 @@ hsic(
 
 \item{scale_factor}{Scaling factor for bandwidth}
 
-\item{group}{Optional grouping of variables}
+\item{group}{Optional list of length 2 specifying group membership for each column in x and y.
+The first element of the list should specify grouping for columns in x, and the
+second element should specify grouping for columns in y. Used for group-wise
+distance calculations in "e-dist", "g-dist", or "l-dist".}
 
 \item{u_center}{Logical; use U-centering instead of V-centering}
 
@@ -39,5 +42,79 @@ hsic(
 HSIC value
 }
 \description{
-Calculates the HSIC between two datasets or matrices.
+Calculates the HSIC between two datasets or matrices, which measures the
+dependence between random variables. This implementation is based on the method
+described in Gretton et al. (2007).
+}
+\examples{
+# Create example datasets
+set.seed(123)
+
+# Example 1: Independent variables
+x1 <- matrix(rnorm(100), ncol = 1)
+y1 <- matrix(rnorm(100), ncol = 1)
+hsic_indep <- hsic(x1, y1, type = "gaussian")
+cat("HSIC for independent variables:", hsic_indep, "\n")
+
+# Example 2: Linear relationship
+x2 <- matrix(1:100, ncol = 1)
+y2 <- matrix(2*x2 + rnorm(100, sd = 3), ncol = 1)
+hsic_linear <- hsic(x2, y2, type = "gaussian")
+cat("HSIC for linear relationship:", hsic_linear, "\n")
+
+# Example 3: Non-linear relationship
+x3 <- matrix(seq(-3, 3, length.out = 100), ncol = 1)
+y3 <- matrix(sin(x3) + rnorm(100, sd = 0.2), ncol = 1)
+hsic_nonlinear <- hsic(x3, y3, type = "gaussian")
+cat("HSIC for non-linear relationship:", hsic_nonlinear, "\n")
+
+# Example 4: Using different kernels/distances
+hsic_gaussian <- hsic(x3, y3, type = "gaussian")
+hsic_laplacian <- hsic(x3, y3, type = "laplacian")
+hsic_euclidean <- hsic(x3, y3, type = "euclidean")
+cat("HSIC values with different kernels:",
+    "\n  Gaussian:", hsic_gaussian,
+    "\n  Laplacian:", hsic_laplacian,
+    "\n  Euclidean:", hsic_euclidean, "\n")
+
+# Example 5: Using custom bandwidth
+hsic_bw_small <- hsic(x3, y3, type = "gaussian", bw = 0.1)
+hsic_bw_large <- hsic(x3, y3, type = "gaussian", bw = 2.0)
+cat("HSIC with different bandwidths:",
+    "\n  Small bandwidth (0.1):", hsic_bw_small,
+    "\n  Large bandwidth (2.0):", hsic_bw_large, "\n")
+
+# Example 6: Using U-centering (unbiased estimator)
+hsic_v <- hsic(x3, y3, type = "gaussian", u_center = FALSE)
+hsic_u <- hsic(x3, y3, type = "gaussian", u_center = TRUE)
+cat("HSIC with different centering:",
+    "\n  V-centering (biased):", hsic_v,
+    "\n  U-centering (unbiased):", hsic_u, "\n")
+
+# Example 7: Using pre-computed distance matrices
+Dx <- KDist_matrix(x3, type = "gaussian")
+Dy <- KDist_matrix(y3, type = "gaussian")
+hsic_precomp <- hsic(Dx, Dy, type = "gaussian", is_distance = TRUE)
+cat("HSIC with pre-computed matrices:", hsic_precomp, "\n")
+
+# Example 8: Using grouped variables with hsic
+# Create sample data
+x <- matrix(rnorm(100*5), ncol = 5)  # 5 variables in x
+y <- matrix(rnorm(100*4), ncol = 4)  # 4 variables in y
+
+# Define group structure: x has 2 groups, y has 2 groups
+x_groups <- c(1, 1, 2, 2, 2)  # First 2 vars in group 1, last 3 in group 2
+y_groups <- c(1, 1, 2, 2)     # First 2 vars in group 1, last 2 in group 2
+
+# Combine into a list as required by hsic
+group_list <- list(x_groups, y_groups)
+
+# Calculate HSIC with the group structure
+hsic_result <- hsic(x, y, type = "e-dist", group = group_list)
+print(hsic_result)
+
+}
+\references{
+Gretton, A., Fukumizu, K., Teo, C., Song, L., Schölkopf, B., & Smola, A. (2007).
+A kernel statistical test of independence. \emph{Advances in neural information processing systems, 20}.
 }

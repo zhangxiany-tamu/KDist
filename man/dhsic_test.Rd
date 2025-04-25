@@ -13,31 +13,152 @@ dhsic_test(
   group = NULL,
   n_perm = 1000,
   seed = NULL,
-  cores = parallel::detectCores() - 1
+  num_cores = 1
 )
 }
 \arguments{
-\item{x}{List of matrices or vectors}
+\item{x}{List of matrices or vectors, where each element corresponds to a random variable}
 
-\item{type}{Type of kernel or distance}
+\item{type}{Type of kernel or distance to use (default: "gaussian").
+Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist", "g-dist", or "l-dist".}
 
-\item{bw}{Bandwidth parameter}
+\item{bw}{Bandwidth parameter for kernel functions. If NULL, it will be automatically determined.}
 
-\item{expo}{Exponent parameter}
+\item{expo}{Exponent parameter for Euclidean distance and polynomial kernel (default: 1).}
 
-\item{scale_factor}{Scaling factor for bandwidth}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{group}{Optional grouping of variables}
+\item{group}{Optional list specifying group membership for each column in the corresponding input list elements.
+The length of the group list should match the length of the input list x, where each element
+contains the grouping information for the respective element in x. Used for group-wise
+distance calculations in "e-dist", "g-dist", or "l-dist".}
 
-\item{n_perm}{Number of permutations}
+\item{n_perm}{Number of permutations to use for the test (default: 1000).}
 
-\item{seed}{Random seed for reproducibility}
+\item{seed}{Random seed for reproducibility (default: NULL).}
 
-\item{cores}{Number of cores for parallel computing}
+\item{num_cores}{Number of cores for parallel computing (default: 1).}
 }
 \value{
-A list with test statistic, p-value, and permutation values
+An object of class "dhsic_test" containing:
+\item{statistic}{dHSIC test statistic value}
+\item{p.value}{Permutation-based p-value}
+\item{permutation_values}{Vector of dHSIC values from permutations}
 }
 \description{
-Performs a permutation test based on the d-variable Hilbert-Schmidt Independence Criterion with multiple datasets.
+Performs a permutation test based on the d-variable Hilbert-Schmidt Independence Criterion
+to assess mutual independence among multiple random variables. This implementation follows
+the methodology described in Pfister et al. (2018).
+}
+\details{
+The d-variable Hilbert-Schmidt Independence Criterion (dHSIC) extends the pairwise HSIC to
+measure mutual independence among d random variables. While pairwise independence tests
+can detect dependence between pairs of variables, they may miss higher-order dependencies
+among three or more variables. The dHSIC addresses this limitation by providing a single
+test statistic for mutual independence.
+
+For d random variables \eqn{X^{(1)}, X^{(2)}, \ldots, X^{(d)}}, the dHSIC is defined as:
+
+\deqn{dHSIC(X^{(1)}, \ldots, X^{(d)}) = ||\otimes_{j=1}^{d} \mu_{X^{(j)}} - \mu_{X^{(1)},\ldots,X^{(d)}}||^2_{\mathcal{H}}}
+
+where \eqn{\mu_{X^{(j)}}} is the mean embedding of the distribution of \eqn{X^{(j)}} in a
+reproducing kernel Hilbert space (RKHS), \eqn{\mu_{X^{(1)},\ldots,X^{(d)}}} is the joint
+embedding, and \eqn{\otimes} denotes the tensor product.
+
+The null hypothesis is that all random variables are mutually independent. The alternative
+hypothesis is that at least one variable depends on the others in some way. The p-value is
+calculated using a permutation test, where all variables except the first one are randomly
+permuted to create the null distribution.
+
+The permutation scheme ensures that under the null distribution, all variables are independent,
+while preserving the marginal distributions of each variable.
+}
+\examples{
+# Example 1: Mutually independent variables
+set.seed(123)
+x1 <- matrix(rnorm(100), ncol = 1)
+x2 <- matrix(rnorm(100), ncol = 1)
+x3 <- matrix(rnorm(100), ncol = 1)
+test1 <- dhsic_test(list(x1, x2, x3), type = "gaussian", n_perm = 200)
+print(test1)
+plot(test1)
+
+# Example 2: Variables with pairwise independence but mutual dependence
+set.seed(456)
+u <- runif(100, -pi, pi)
+x1 <- matrix(sin(u), ncol = 1)
+x2 <- matrix(cos(u), ncol = 1)
+x3 <- matrix(sin(u) * cos(u), ncol = 1)
+test2 <- dhsic_test(list(x1, x2, x3), type = "gaussian", n_perm = 200)
+print(test2)
+
+# Example 3: Using different kernel types
+test_gaussian <- dhsic_test(list(x1, x2, x3), type = "gaussian", n_perm = 200)
+test_laplacian <- dhsic_test(list(x1, x2, x3), type = "laplacian", n_perm = 200)
+test_euclidean <- dhsic_test(list(x1, x2, x3), type = "euclidean", n_perm = 200)
+print(c(gaussian = test_gaussian$p.value,
+        laplacian = test_laplacian$p.value,
+        euclidean = test_euclidean$p.value))
+
+# Example 4: Using multivariate data
+x1_multi <- matrix(rnorm(200), ncol = 2)
+x2_multi <- matrix(rnorm(200), ncol = 2)
+x3_multi <- matrix(rnorm(200), ncol = 2)
+test_multi <- dhsic_test(list(x1_multi, x2_multi, x3_multi), n_perm = 200)
+print(test_multi)
+
+# Example 5: Testing with correlated variables
+x1 <- matrix(rnorm(100), ncol = 1)
+x2 <- matrix(0.7 * x1 + 0.3 * rnorm(100), ncol = 1)  # Correlated with x1
+x3 <- matrix(rnorm(100), ncol = 1)  # Independent of both
+test_corr <- dhsic_test(list(x1, x2, x3), n_perm = 200)
+print(test_corr)
+
+# Example 6: Using grouped variables with dhsic_test
+# Create sample data with 3 datasets
+set.seed(123)
+n <- 100
+x1 <- matrix(rnorm(n*3), ncol = 3)  # 3 variables in x1
+x2 <- matrix(rnorm(n*4), ncol = 4)  # 4 variables in x2
+x3 <- matrix(rnorm(n*2), ncol = 2)  # 2 variables in x3
+
+# Create dependencies between datasets (first groups are related)
+z <- matrix(rnorm(n), ncol = 1)  # Shared latent factor
+x1[, 1:2] <- x1[, 1:2] + z \%*\% matrix(1, 1, 2)
+x2[, 1:2] <- x2[, 1:2] + z \%*\% matrix(1, 1, 2)
+x3[, 1] <- x3[, 1] + z
+
+# Define group structure for each dataset
+groups1 <- c(1, 1, 2)        # First 2 vars in group 1, last 1 in group 2
+groups2 <- c(1, 1, 2, 2)     # First 2 vars in group 1, last 2 in group 2
+groups3 <- c(1, 2)           # Each var in its own group
+
+# Combine into a list matching the input list structure
+group_list <- list(groups1, groups2, groups3)
+
+# Perform dHSIC test with the group structure
+test_grouped <- dhsic_test(list(x1, x2, x3), type = "e-dist",
+                          group = group_list, n_perm = 200)
+print(test_grouped)
+
+# Compare with standard (non-grouped) dHSIC test
+test_standard <- dhsic_test(list(x1, x2, x3), type = "gaussian", n_perm = 200)
+print(test_standard)
+
+# Example 7: Using parallel computing (if multiple cores are available)
+\dontrun{
+test_parallel <- dhsic_test(list(x1, x2, x3), n_perm = 1000, num_cores = 4)
+print(test_parallel)
+}
+
+}
+\references{
+Pfister, N., Bühlmann, P., Schölkopf, B., & Peters, J. (2018).
+Kernel-based tests for joint independence. Journal of the Royal Statistical Society:
+Series B (Statistical Methodology), 80(1), 5-31.
+}
+\seealso{
+\code{\link{dhsic}} for calculating dHSIC without performing a hypothesis test
+\code{\link{hsic_test}} for the pairwise HSIC independence test
+\code{\link{jhsic_test}} for an alternative joint independence test
 }

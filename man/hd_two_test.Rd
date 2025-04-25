@@ -2,7 +2,7 @@
 % Please edit documentation in R/hypothesis_tests.R
 \name{hd_two_test}
 \alias{hd_two_test}
-\title{High-Dimensional Two-Sample Test}
+\title{High-Dimensional Two-Sample t-Test}
 \usage{
 hd_two_test(
   x,
@@ -15,23 +15,108 @@ hd_two_test(
 )
 }
 \arguments{
-\item{x}{First sample}
+\item{x}{First sample (matrix, data frame, or vector)}
 
-\item{y}{Second sample}
+\item{y}{Second sample (matrix, data frame, or vector)}
 
-\item{type}{Type of kernel or distance}
+\item{type}{Type of kernel or distance to use (default: "e-dist").
+Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist", "g-dist", or "l-dist".
+For high-dimensional data, "e-dist", "g-dist", and "l-dist" are specifically designed to provide
+better power.}
 
-\item{bw}{Bandwidth parameter}
+\item{bw}{Bandwidth parameter for kernel functions. If NULL, it will be automatically determined.}
 
-\item{expo}{Exponent parameter}
+\item{expo}{Exponent parameter for euclidean distance and polynomial kernel (default: 1).}
 
-\item{scale_factor}{Scaling factor for bandwidth}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{group}{Optional grouping of variables}
+\item{group}{Optional vector specifying group membership for each column.
+Used for group-wise distance calculations in "e-dist", "g-dist", or "l-dist".}
 }
 \value{
-A list with test statistic and p-value
+A list with test statistic and p-value:
+\item{statistic}{The test statistic value}
+\item{p.value}{The p-value for the test}
 }
 \description{
-Performs a test for the difference between two high-dimensional distributions.
+Performs a test for the difference between two high-dimensional distributions. This implementation
+follows the methodology described in Chakraborty & Zhang (2021), which provides a framework
+specifically designed for settings where the dimensionality is large compared to sample size.
+}
+\details{
+The high-dimensional two-sample test is designed to compare two distributions when the number
+of dimensions (p) is large relative to the sample size (n), potentially even p >> n. The test
+is based on a modified Maximum Mean Discrepancy (MMD) statistic that has improved power in
+high-dimensional settings.
+
+The test statistic incorporates bias correction terms and scaling factors to provide a
+more stable and powerful test in high dimensions. The statistic follows a t-distribution
+under the null hypothesis, enabling analytical p-value calculation without requiring
+permutation procedures.
+
+When using "e-dist", "g-dist", or "l-dist" as the distance type, the function implements
+specialized distance metrics designed for high-dimensional data:
+\itemize{
+\item "e-dist": Euclidean-based aggregated distance
+\item "g-dist": Gaussian kernel-based aggregated distance
+\item "l-dist": Laplacian kernel-based aggregated distance
+}
+
+These metrics address the concentration of distances phenomenon in high dimensions by
+aggregating componentwise distances in a way that maintains discriminative power.
+}
+\examples{
+# Example 1: High-dimensional data with true difference
+set.seed(123)
+p <- 500  # High dimensionality
+n1 <- 30  # Small sample size
+n2 <- 25  # Small sample size
+
+# Generate high-dimensional data with difference in first p/4 dimensions
+x <- matrix(rnorm(n1 * p), nrow = n1, ncol = p)
+y <- matrix(rnorm(n2 * p), nrow = n2, ncol = p)
+y[, 1:(p/4)] <- y[, 1:(p/4)] + 0.7  # Add shift in first p/4 dimensions
+
+# Test using e-dist (recommended for high-dimensional data)
+test1 <- hd_two_test(x, y, type = "e-dist")
+print(test1)
+
+# Example 2: High-dimensional data with no difference (null hypothesis)
+x2 <- matrix(rnorm(n1 * p), nrow = n1, ncol = p)
+y2 <- matrix(rnorm(n2 * p), nrow = n2, ncol = p)
+
+test2 <- hd_two_test(x2, y2, type = "e-dist")
+print(test2)
+
+# Example 3: Comparing different distance types for high-dimensional data
+test_edist <- hd_two_test(x, y, type = "e-dist")
+test_gdist <- hd_two_test(x, y, type = "g-dist")
+test_ldist <- hd_two_test(x, y, type = "l-dist")
+
+cat("E-dist p-value:", test_edist$p.value, "\n")
+cat("G-dist p-value:", test_gdist$p.value, "\n")
+cat("L-dist p-value:", test_ldist$p.value, "\n")
+
+# Example 4: Using group structure for very high-dimensional data
+p <- 1000
+x3 <- matrix(rnorm(n1 * p), nrow = n1, ncol = p)
+y3 <- matrix(rnorm(n2 * p), nrow = n2, ncol = p)
+y3[, 1:(p/4)] <- y3[, 1:(p/4)] + 0.5  # Add shift in first p/4 dimensions
+
+# Create groups (e.g., 10 groups of 100 variables each)
+groups <- rep(1:10, each = 100)
+
+# Test with group structure
+test_grouped <- hd_two_test(x3, y3, type = "e-dist", group = groups)
+print(test_grouped)
+
+}
+\references{
+Chakraborty, S., & Zhang, X. (2021). A New Framework for Distance and Kernel-based Metrics in
+High-dimension. \emph{Electronic Journal of Statistics}, 15, 5455-5522.
+}
+\seealso{
+\code{\link{mmd_test}} for the standard MMD two-sample test
+\code{\link{ed_test}} for the energy distance test
+\code{\link{hd_dep_test}} for high-dimensional dependence testing
 }

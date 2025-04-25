@@ -7,7 +7,7 @@
 hd_dep_test(
   x,
   y,
-  type = "euclidean",
+  type = "e-dist",
   bw = NULL,
   expo = 1,
   scale_factor = 0.5,
@@ -16,25 +16,165 @@ hd_dep_test(
 )
 }
 \arguments{
-\item{x}{First dataset}
+\item{x}{First dataset (matrix, data frame, or vector)}
 
-\item{y}{Second dataset}
+\item{y}{Second dataset (matrix, data frame, or vector)}
 
-\item{type}{Type of kernel or distance}
+\item{type}{Type of kernel or distance to use (default: "e-dist").
+Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist", "g-dist", or "l-dist".
+For high-dimensional data, "e-dist", "g-dist", and "l-dist" are specifically designed to provide
+better power.}
 
-\item{bw}{Bandwidth parameter}
+\item{bw}{Bandwidth parameter for kernel functions. If NULL, it will be automatically determined.}
 
-\item{expo}{Exponent parameter}
+\item{expo}{Exponent parameter for euclidean distance and polynomial kernel (default: 1).}
 
-\item{scale_factor}{Scaling factor for bandwidth}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{group}{Optional grouping of variables}
+\item{group}{Optional list specifying group membership for each column in the corresponding input list elements.
+The length of the group list should match the length of the input list x, where each element
+contains the grouping information for the respective element in x. Used for group-wise
+distance calculations in "e-dist", "g-dist", or "l-dist".}
 
-\item{is_distance}{Logical; whether input matrices are already distance matrices}
+\item{is_distance}{Logical; whether input matrices are already distance matrices (default: FALSE).}
 }
 \value{
-A list with test statistic, p-value, correlation value, and degrees of freedom
+A list containing:
+\item{statistic}{The test statistic value}
+\item{p.value}{The p-value for the test}
+\item{correlation}{The HSIC correlation value}
+\item{df}{Degrees of freedom for the test}
 }
 \description{
-Performs a test for dependence between two high-dimensional datasets.
+Performs a test for dependence between two high-dimensional datasets. This implementation
+follows the methodology described in Chakraborty & Zhang (2021), which provides a framework
+specifically designed for settings where the dimensionality is large compared to sample size.
+}
+\details{
+The high-dimensional dependence test is designed to detect dependence between two sets of variables
+when the dimensionality is large relative to the sample size. The test is based on a modified
+Hilbert-Schmidt Independence Criterion (HSIC) that has improved power in high-dimensional settings.
+
+The test uses a t-statistic based on the HSIC correlation, which follows a t-distribution under
+the null hypothesis of independence. This allows analytical calculation of p-values without
+requiring computationally intensive permutation procedures, making it particularly suitable for
+high-dimensional applications.
+
+When using "e-dist", "g-dist", or "l-dist" as the distance type, the function implements
+specialized distance metrics designed for high-dimensional data:
+\itemize{
+\item "e-dist": Euclidean-based aggregated distance
+\item "g-dist": Gaussian kernel-based aggregated distance
+\item "l-dist": Laplacian kernel-based aggregated distance
+}
+
+These metrics address the concentration of distances phenomenon in high dimensions by
+aggregating componentwise distances in a way that maintains discriminative power for
+dependence testing.
+}
+\examples{
+# Example 1: High-dimensional data with true dependence
+set.seed(123)
+n <- 50      # Sample size
+p_x <- 200   # Dimensions of first dataset
+p_y <- 150   # Dimensions of second dataset
+
+# Generate first high-dimensional dataset
+x <- matrix(rnorm(n * p_x), nrow = n, ncol = p_x)
+
+# Generate dependent second dataset
+# Only the first 10 dimensions are related
+y <- matrix(rnorm(n * p_y), nrow = n, ncol = p_y)
+y[, 1:10] <- x[, 1:10] + 0.5 * matrix(rnorm(n * 10), nrow = n, ncol = 10)
+
+# Test using e-dist (recommended for high-dimensional data)
+test1 <- hd_dep_test(x, y, type = "e-dist")
+print(test1)
+
+# Example 2: High-dimensional data with independence (null hypothesis)
+x2 <- matrix(rnorm(n * p_x), nrow = n, ncol = p_x)
+y2 <- matrix(rnorm(n * p_y), nrow = n, ncol = p_y)
+
+test2 <- hd_dep_test(x2, y2, type = "e-dist")
+print(test2)
+
+# Example 3: Comparing different distance types
+test_edist <- hd_dep_test(x, y, type = "e-dist")
+test_gdist <- hd_dep_test(x, y, type = "g-dist")
+test_ldist <- hd_dep_test(x, y, type = "l-dist")
+
+cat("E-dist p-value:", test_edist$p.value,
+    "correlation:", test_edist$correlation, "\n")
+cat("G-dist p-value:", test_gdist$p.value,
+    "correlation:", test_gdist$correlation, "\n")
+cat("L-dist p-value:", test_ldist$p.value,
+    "correlation:", test_ldist$correlation, "\n")
+
+# Example 4: Very high-dimensional scenario
+n <- 30       # Smaller sample size
+p_x <- 500    # Very high dimensions
+p_y <- 400    # Very high dimensions
+
+# Create datasets with sparse dependence
+x3 <- matrix(rnorm(n * p_x), nrow = n, ncol = p_x)
+y3 <- matrix(rnorm(n * p_y), nrow = n, ncol = p_y)
+
+# 100 dimensions have dependencies
+shared_dims <- sample(1:min(p_x, p_y), 100)
+for (i in shared_dims) {
+  y3[, i] <- x3[, i] + 0.3 * rnorm(n)
+}
+
+test3 <- hd_dep_test(x3, y3, type = "e-dist")
+print(test3)
+
+# Example 5: Using grouped variables with hd_dep_test
+# Generate high-dimensional datasets with clustered variables
+set.seed(123)
+n <- 50      # Sample size
+p1 <- 100    # Dimensions of x
+p2 <- 80     # Dimensions of y
+
+# Create data matrices
+x <- matrix(rnorm(n * p1), nrow = n, ncol = p1)
+y <- matrix(rnorm(n * p2), nrow = n, ncol = p2)
+
+# Create dependencies between specific groups
+# First 10 variables in x affect first 8 variables in y
+y[, 1:8] <- y[, 1:8] + x[, 1:8]
+
+# Define group structure for x and y
+# Group x variables into 5 groups of 20 each
+x_groups <- rep(1:5, each = 20)
+# Group y variables into 4 groups of 20 each
+y_groups <- rep(1:4, each = 20)
+
+# Combine into a list
+group_list <- list(x_groups, y_groups)
+
+# Perform high-dimensional dependence test with grouped variables
+test_grouped <- hd_dep_test(x, y, type = "e-dist", group = group_list)
+print(test_grouped)
+
+# Compare with standard test (without grouping)
+test_standard <- hd_dep_test(x, y, type = "e-dist")
+print(test_standard)
+
+# Example 6: Using pre-computed distance matrices
+library(stats)
+Dx <- KDist_matrix(x, type = "e-dist")
+Dy <- KDist_matrix(y, type = "e-dist")
+
+test_dist <- hd_dep_test(Dx, Dy, is_distance = TRUE)
+print(test_dist)
+
+}
+\references{
+Chakraborty, S., & Zhang, X. (2021). A New Framework for Distance and Kernel-based Metrics in
+High-dimension. \emph{Electronic Journal of Statistics}, 15, 5455-5522.
+}
+\seealso{
+\code{\link{hsic_test}} for the standard HSIC independence test
+\code{\link{dcov_test}} for the distance covariance test
+\code{\link{hd_two_test}} for high-dimensional two-sample testing
 }

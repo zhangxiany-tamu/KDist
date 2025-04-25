@@ -11,15 +11,42 @@ kernel_for_smooth(
 )
 }
 \arguments{
-\item{type}{Type of kernel: "gaussian", "epanechnikov", or "uniform"}
+\item{type}{Type of kernel. Options:
+\itemize{
+\item "gaussian": Gaussian kernel (normal density)
+\item "epanechnikov": Epanechnikov kernel (quadratic function with compact support)
+\item "uniform": Uniform kernel (rectangular function)
+}}
 
-\item{nu}{Order of the kernel}
+\item{nu}{Order of the kernel. Higher values provide higher-order approximations (default: 2).
+Available values depend on the kernel type:
+\itemize{
+\item Gaussian: 2, 4, or 6
+\item Epanechnikov: 2, 4, or 6
+\item Uniform: only 2
+}}
 
-\item{param}{Additional parameter (for uniform kernel)}
+\item{param}{Additional parameter. For uniform kernel, specifies the boundary (default: NULL,
+which uses boundary = 1 for uniform kernel).}
 }
 \value{
-A kernel function
+A function that computes the kernel values with the given specifications.
+The returned function has an additional attribute "nu" storing the order.
 }
 \description{
 Creates a kernel function for local smoothing with the specified properties.
+The returned function can be used to apply various types of kernel smoothing
+in nonparametric conditional testing procedures.
+}
+\details{
+This function returns a kernel function with the specified type and order.
+The returned kernel is properly normalized and has appropriate support.
+Higher order kernels (higher values of nu) provide better asymptotic
+theoretical properties but may be less stable in small samples.
+
+The returned function takes two arguments:
+\itemize{
+\item x: The input values (typically differences between data points)
+\item h: The bandwidth parameter controlling the smoothing amount
+}
 }

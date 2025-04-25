@@ -21,3 +21,14 @@ Bandwidth parameter value or vector
 \description{
 Calculate optimal bandwidth
 }
+\examples{
+# Working with a data frame (must have all numeric columns)
+df <- data.frame(a = rnorm(20), b = rnorm(20), c = rnorm(20))
+bw_df <- bw_optim(df)
+
+# The function will throw an error if non-numeric columns are present
+\dontrun{
+df_with_factors <- data.frame(a = rnorm(20), b = as.factor(1:20))
+bw_error <- bw_optim(df_with_factors) # This will error
+}
+}

@@ -2,22 +2,71 @@
 % Please edit documentation in R/change_point.R
 \name{get_seeded_intervals}
 \alias{get_seeded_intervals}
-\title{Generate Seeded Intervals}
+\title{Generate Seeded Intervals for Binary Segmentation}
 \usage{
-get_seeded_intervals(n, decay = sqrt(2), unique.int = FALSE, bound = 2)
+get_seeded_intervals(n, decay = sqrt(2), unique_int = TRUE, bound = 2)
 }
 \arguments{
-\item{n}{Length of time series}
+\item{n}{Length of time series (number of observations)}
 
-\item{decay}{Decay factor for interval generation}
+\item{decay}{Decay factor that controls the interval generation (default: sqrt(2)).
+Smaller values create more intervals and finer granularity.}
 
-\item{unique.int}{Whether to return unique intervals}
+\item{unique_int}{Logical; whether to return only unique intervals (default: TRUE).
+When TRUE, duplicate intervals are removed.}
 
-\item{bound}{Minimum interval size}
+\item{bound}{Minimum interval size to consider (default: 2).
+Intervals shorter than this threshold are discarded.}
 }
 \value{
-A matrix of interval start and end points
+A matrix with two columns representing the start and end points of each interval.
+Each row defines one interval [start, end] to be considered in the change point detection.
 }
 \description{
-Creates seeded intervals for binary segmentation.
+Creates a structured set of intervals for use in seeded binary segmentation (SeedBS)
+for change point detection, based on the methodology described in Kovács et al. (2023).
+}
+\details{
+This function implements the interval generation scheme for Seeded Binary Segmentation (SeedBS),
+a general methodology for fast and optimal changepoint detection. The approach generates a
+carefully chosen set of intervals at different scales, which are used to search for change points.
+
+The intervals are created using a dyadic structure controlled by the decay parameter, starting
+with the full interval [1,n] and then generating intervals of decreasing lengths. This creates
+a multi-scale representation that enables efficient change point detection while maintaining
+statistical power.
+
+SeedBS offers computational advantages over traditional approaches like Wild Binary Segmentation
+(WBS) by using a deterministic set of intervals rather than random ones, while still maintaining
+optimal statistical properties.
+}
+\examples{
+# Example 1: Generate intervals for a time series of length 100
+intervals <- get_seeded_intervals(100)
+head(intervals)  # View the first few intervals
+dim(intervals)   # See how many intervals were generated
+
+# Example 2: Generate intervals with a smaller decay factor (more intervals)
+intervals_fine <- get_seeded_intervals(100, decay = 1.2)
+dim(intervals_fine)  # Should generate more intervals than the default
+
+# Example 3: Generate only unique intervals with minimum size 10
+intervals_unique <- get_seeded_intervals(200, unique_int = TRUE, bound = 10)
+head(intervals_unique)
+
+# Example 4: Visualize the interval structure
+intervals_small <- get_seeded_intervals(50, decay = 1.5)
+plot(1, 1, type = "n", xlim = c(1, 50), ylim = c(1, nrow(intervals_small)),
+     xlab = "Time points", ylab = "Interval index", main = "Seeded Intervals")
+for (i in 1:nrow(intervals_small)) {
+  lines(c(intervals_small[i, 1], intervals_small[i, 2]), c(i, i), lwd = 2)
+}
+
+}
+\references{
+Kovács, S., Bühlmann, P., Li, H., & Munk, A. (2023). Seeded binary segmentation: a
+general methodology for fast and optimal changepoint detection. \emph{Biometrika}, \emph{110}(1), 249-256.
+}
+\seealso{
+\code{\link{kcpd_sbs}} for detecting multiple change points using these seeded intervals
 }

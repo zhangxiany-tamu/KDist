@@ -2,12 +2,12 @@
 % Please edit documentation in R/hypothesis_tests.R
 \name{hsic_test}
 \alias{hsic_test}
-\title{HSIC Independence Test}
+\title{Hilbert-Schmidt Independence Criterion (HSIC) Test}
 \usage{
 hsic_test(
   x,
   y,
-  type = "euclidean",
+  type = "gaussian",
   bw = NULL,
   expo = 1,
   scale_factor = 0.5,
@@ -15,35 +15,180 @@ hsic_test(
   u_center = FALSE,
   n_perm = 1000,
   seed = NULL,
-  cores = parallel::detectCores() - 1
+  num_cores = 1,
+  is_distance = FALSE
 )
 }
 \arguments{
-\item{x}{First dataset}
+\item{x}{First dataset (matrix, data frame, or vector) or pre-computed distance/kernel matrix}
 
-\item{y}{Second dataset}
+\item{y}{Second dataset (matrix, data frame, or vector) or pre-computed distance/kernel matrix}
 
-\item{type}{Type of kernel or distance}
+\item{type}{Type of kernel or distance to use (default: "gaussian").
+Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist", "g-dist", or "l-dist".}
 
-\item{bw}{Bandwidth parameter}
+\item{bw}{Bandwidth parameter for kernel functions. If NULL, it will be automatically determined.}
 
-\item{expo}{Exponent parameter}
+\item{expo}{Exponent parameter for euclidean distance and polynomial kernel (default: 1).}
 
-\item{scale_factor}{Scaling factor for bandwidth}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{group}{Optional grouping of variables}
+\item{group}{Optional list of length 2 specifying group membership for each column in x and y.
+The first element of the list should specify grouping for columns in x, and the
+second element should specify grouping for columns in y. Used for group-wise
+distance calculations in "e-dist", "g-dist", or "l-dist".}
 
-\item{u_center}{Logical; use U-centering instead of V-centering}
+\item{u_center}{Logical; use U-centering instead of V-centering (default: FALSE).
+U-centering provides an unbiased estimate of HSIC by excluding diagonal terms in the kernel matrices.}
 
-\item{n_perm}{Number of permutations}
+\item{n_perm}{Number of permutations to use for the test (default: 1000).}
 
-\item{seed}{Random seed for reproducibility}
+\item{seed}{Random seed for reproducibility (default: NULL).}
 
-\item{cores}{Number of cores for parallel computing}
+\item{num_cores}{Number of cores for parallel computing (default: 1).}
+
+\item{is_distance}{Logical; whether input matrices x and y are already distance/kernel matrices (default: FALSE).}
 }
 \value{
-A list with test statistic, p-value, and permutation values
+An object of class "hsic_test" containing:
+\item{statistic}{HSIC test statistic value}
+\item{p.value}{Permutation-based p-value}
+\item{permutation_values}{Vector of HSIC values from permutations}
 }
 \description{
-Performs a permutation test based on the Hilbert-Schmidt Independence Criterion.
+Performs a permutation test based on the Hilbert-Schmidt Independence Criterion to assess
+independence between two multivariate random variables. HSIC is a powerful nonparametric
+measure of dependence that can detect both linear and non-linear associations.
+}
+\details{
+The Hilbert-Schmidt Independence Criterion (HSIC) measures the dependency between two random variables
+by computing the squared Hilbert-Schmidt norm of the cross-covariance operator in reproducing kernel
+Hilbert spaces (RKHS).
+
+For two samples \eqn{X = \{x_1, \ldots, x_n\}} and \eqn{Y = \{y_1, \ldots, y_n\}}, the HSIC is defined as:
+
+\deqn{HSIC(X, Y) = \frac{1}{n^2} \text{trace}(KHLH)}
+
+where \eqn{K} and \eqn{L} are kernel matrices for \eqn{X} and \eqn{Y} respectively, and \eqn{H} is the
+centering matrix \eqn{H = I - \frac{1}{n}ee^T} with \eqn{e} being a vector of ones.
+
+For kernel-based types (gaussian, laplacian, polynomial), a higher value indicates stronger dependency.
+For distance-based types (euclidean, e-dist, g-dist, l-dist), the interpretation may vary.
+
+The null hypothesis is that \eqn{X} and \eqn{Y} are independent. The alternative hypothesis
+is that they are dependent. The p-value is calculated using a permutation test,
+where one sample is randomly permuted while keeping the other fixed to create the null distribution.
+
+U-centering vs. V-centering:
+
+The HSIC can be estimated using either a V-statistic or a U-statistic:
+\enumerate{
+\item V-statistic (u_center = FALSE, default):
+\deqn{HSIC_V(X, Y) = \frac{1}{n^2}\sum_{i,j=1}^{n} k(x_i,x_j)l(y_i,y_j) + \frac{1}{n^4}\sum_{i,j=1}^{n} k(x_i,x_j)\sum_{i,j=1}^{n} l(y_i,y_j) - \frac{2}{n^3}\sum_{i,j,q=1}^{n} k(x_i,x_j)l(y_i,y_q)}
+This is a biased estimator but often has better finite-sample properties.
+\item U-statistic (u_center = TRUE):
+\deqn{HSIC_U(X, Y) = \frac{1}{(n)_2}\sum_{i \neq j} k(x_i,x_j)l(y_i,y_j) + \frac{1}{(n)_4}\sum_{i \neq j \neq q \neq r} k(x_i,x_j)l(y_q,y_r) -\frac{2}{(n)_3}\sum_{i \neq j \neq q} k(x_i,x_j)l(y_i,y_q)}
+where \eqn{(n)_k=n!/(n-k)!}. This removes the diagonal elements in the kernel matrices, providing an unbiased estimator of HSIC.
+U-centering is particularly important for small sample sizes, as it reduces estimation bias.
+}
+
+When is_distance = TRUE, x and y are assumed to be pre-computed distance/kernel matrices. In this case,
+the parameters bw, expo, scale_factor, and group are ignored.
+}
+\examples{
+# Example 1: Independent variables
+set.seed(123)
+x1 <- matrix(rnorm(100), ncol = 1)
+y1 <- matrix(rnorm(100), ncol = 1)
+test1 <- hsic_test(x1, y1, type = "gaussian", n_perm = 200)
+print(test1)
+plot(test1)
+
+# Example 2: Linear relationship
+x2 <- matrix(runif(100), ncol = 1)
+y2 <- matrix(2*x2 + 0.1*rnorm(100), ncol = 1)  # Linear relationship with noise
+test2 <- hsic_test(x2, y2, type = "gaussian", n_perm = 200)
+print(test2)
+
+# Example 3: Non-linear relationship
+x3 <- matrix(runif(100, -3, 3), ncol = 1)
+y3 <- matrix(sin(x3) + 0.1*rnorm(100), ncol = 1)  # Sinusoidal relationship
+test3 <- hsic_test(x3, y3, type = "gaussian", n_perm = 200)
+print(test3)
+
+# Example 4: Using different kernel types
+test_gaussian <- hsic_test(x3, y3, type = "gaussian", n_perm = 200)
+test_laplacian <- hsic_test(x3, y3, type = "laplacian", n_perm = 200)
+test_euclidean <- hsic_test(x3, y3, type = "euclidean", n_perm = 200)
+print(c(gaussian = test_gaussian$p.value,
+        laplacian = test_laplacian$p.value,
+        euclidean = test_euclidean$p.value))
+
+# Example 5: Comparing V-statistic and U-statistic
+# For a small sample size, the difference might be more noticeable
+x_small <- matrix(rnorm(30), ncol = 1)
+y_small <- matrix(0.5*x_small + rnorm(30, sd = 0.5), ncol = 1)
+
+test_v <- hsic_test(x_small, y_small, type = "gaussian", u_center = FALSE, n_perm = 200)
+test_u <- hsic_test(x_small, y_small, type = "gaussian", u_center = TRUE, n_perm = 200)
+
+print("V-statistic (biased):")
+print(test_v)
+print("U-statistic (unbiased):")
+print(test_u)
+
+# Example 6: Using multivariate data
+x_multi <- matrix(rnorm(200), ncol = 2)
+y_multi <- matrix(cbind(x_multi[,1] + rnorm(100, sd = 0.1),
+                        x_multi[,2]^2 + rnorm(100, sd = 0.1)), ncol = 2)
+test_multi <- hsic_test(x_multi, y_multi, type = "gaussian", n_perm = 200)
+print(test_multi)
+
+# Example 7: Using pre-computed distance matrices
+Dx <- KDist_matrix(x_multi, type = "gaussian")
+Dy <- KDist_matrix(y_multi, type = "gaussian")
+test_precomp <- hsic_test(Dx, Dy, type = "gaussian", is_distance = TRUE, n_perm = 200)
+print(test_precomp)
+
+# Example 8: Using grouped variables with hsic_test
+# Create sample data
+set.seed(123)
+n <- 100
+x <- matrix(rnorm(n*4), ncol = 4)  # 4 variables in x
+y <- matrix(rnorm(n*3), ncol = 3)  # 3 variables in y
+
+# Create a dependency between the variables in the first group
+y[, 1:2] <- y[, 1:2] + 0.8 * x[, 1:2]
+
+# Define group structure for both datasets
+x_groups <- c(1, 1, 2, 2)    # First 2 vars in group 1, last 2 in group 2
+y_groups <- c(1, 1, 2)       # First 2 vars in group 1, last 1 in group 2
+
+# Combine into a list for group-specific analysis
+group_list <- list(x_groups, y_groups)
+
+# Perform HSIC test with the group structure
+test_grouped <- hsic_test(x, y, type = "e-dist", group = group_list, n_perm = 200)
+print(test_grouped)
+
+# Compare with standard (non-grouped) HSIC test
+test_standard <- hsic_test(x, y, type = "gaussian", n_perm = 200)
+print(test_standard)
+
+# Example 9: Using parallel computing (if multiple cores are available)
+\dontrun{
+test_parallel <- hsic_test(x_multi, y_multi, n_perm = 1000, num_cores = 4)
+print(test_parallel)
+}
+
+}
+\references{
+Gretton, A., Fukumizu, K., Teo, C. H., Song, L., Schölkopf, B., & Smola, A. J. (2007).
+A kernel statistical test of independence. Advances in Neural Information Processing Systems, 20.
+}
+\seealso{
+\code{\link{hsic}} for calculating HSIC without performing a hypothesis test
+\code{\link{mmd_test}} for the MMD two-sample test
+\code{\link{dhsic_test}} for the d-variable HSIC test
+\code{\link{dcov_test}} for the distance covariance test (when type="euclidean")
 }

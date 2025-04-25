@@ -7,7 +7,7 @@
 jhsic(
   x,
   cc = 1,
-  type = "euclidean",
+  type = "gaussian",
   stat_type = "V",
   bw = NULL,
   expo = 1,
@@ -16,25 +16,154 @@ jhsic(
 )
 }
 \arguments{
-\item{x}{List of matrices or data frames}
+\item{x}{List of matrices or data frames, where each element corresponds to a random variable}
 
-\item{cc}{Constant parameter, default is 1}
+\item{cc}{Constant parameter (default: 1)}
 
-\item{type}{Type of kernel or distance}
+\item{type}{Type of kernel or distance to use (default: "gaussian").
+Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist", "g-dist", or "l-dist".
+Note that when type = "euclidean", the function calculates the joint distance covariance (JdCov)
+as described in Chakraborty & Zhang (2019).}
 
-\item{stat_type}{Type of statistic ("V", "U", "US", or "UR")}
+\item{stat_type}{Type of statistic (default: "V")
+\itemize{
+\item "V": V-statistic (standard, biased estimator)
+\item "U": U-statistic (partially unbiased estimator that removes diagonal terms)
+\item "US": Scale-free U-statistic for normalized measure
+\item "UR": Rank-based U-statistic, robust to monotonic transformations
+}}
 
-\item{bw}{Bandwidth parameter}
+\item{bw}{Bandwidth parameter for kernel functions. If NULL, it will be automatically determined.}
 
-\item{expo}{Exponent parameter}
+\item{expo}{Exponent parameter for euclidean distance and polynomial kernel (default: 1).}
 
-\item{scale_factor}{Scaling factor for bandwidth}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{group}{Optional grouping of variables}
+\item{group}{Optional list specifying group membership for each column in the corresponding input list elements.
+Used for group-wise distance calculations in "e-dist", "g-dist", or "l-dist".}
 }
 \value{
-Joint HSIC value
+JHSIC value
 }
 \description{
-Calculates the joint HSIC for multiple datasets.
+Calculates the joint HSIC (JHSIC) for measuring mutual independence among multiple random variables.
+JHSIC extends the pairwise HSIC to detect complex dependencies among three or more variables
+that might be missed by testing only pairs of variables. Unlike pairwise tests that
+can only detect dependence between pairs, JHSIC provides a single test statistic for
+mutual independence.
+}
+\details{
+The Joint Hilbert-Schmidt Independence Criterion (JHSIC) extends the pairwise HSIC to detect
+complex dependencies among multiple variables. It is particularly useful for cases where
+variables might have pairwise independence but joint dependence.
+
+When type = "euclidean", JHSIC becomes the joint distance covariance (JdCov) proposed in
+Chakraborty & Zhang (2019). JdCov is a measure of joint dependence based on distances
+that can detect complex dependency structures among multiple variables. When type = "polynomial",
+"gaussian", or "laplacian", the kernel matrix will be transformed into a kernel-induced distance
+matrix.
+
+Different statistic types offer various properties:
+\itemize{
+\item V-statistic: Standard, biased estimator
+\item U-statistic: Partially unbiased estimator that removes diagonal terms
+\item US-statistic: Scale-free U-statistic for normalized measure
+\item UR-statistic: Rank-based U-statistic, robust to monotonic transformations
+}
+
+When using "e-dist", "g-dist", or "l-dist" as the distance type, the function implements
+specialized distance metrics designed for high-dimensional data:
+\itemize{
+\item "e-dist": Euclidean-based aggregated distance
+\item "g-dist": Gaussian kernel-based aggregated distance
+\item "l-dist": Laplacian kernel-based aggregated distance
+}
+}
+\examples{
+# Example 1: Testing for independence among truly independent variables
+set.seed(123)
+x1 <- matrix(rnorm(100), ncol = 1)
+x2 <- matrix(rnorm(100), ncol = 1)
+x3 <- matrix(rnorm(100), ncol = 1)
+jhsic_indep <- jhsic(list(x1, x2, x3), stat_type = "V")
+print(jhsic_indep)
+
+# Example 2: Testing variables with pairwise independence but joint dependence
+set.seed(456)
+u <- runif(100, -pi, pi)
+x1 <- matrix(sin(u), ncol = 1)
+x2 <- matrix(cos(u), ncol = 1)
+x3 <- matrix(sin(u) * cos(u), ncol = 1)
+jhsic_dep <- jhsic(list(x1, x2, x3), stat_type = "V")
+print(jhsic_dep)
+
+# Example 3: Comparing different statistic types
+jhsic_v <- jhsic(list(x1, x2, x3), stat_type = "V")
+jhsic_u <- jhsic(list(x1, x2, x3), stat_type = "U")
+jhsic_us <- jhsic(list(x1, x2, x3), stat_type = "US")
+jhsic_ur <- jhsic(list(x1, x2, x3), stat_type = "UR")
+
+print(c(V = jhsic_v, U = jhsic_u, US = jhsic_us, UR = jhsic_ur))
+
+# Example 4: Using different kernel types
+jhsic_gaussian <- jhsic(list(x1, x2, x3), type = "gaussian", stat_type = "V")
+jhsic_laplacian <- jhsic(list(x1, x2, x3), type = "laplacian", stat_type = "V")
+# Using type = "euclidean" calculates the joint distance covariance (JdCov)
+# as described in Chakraborty & Zhang (2019)
+jhsic_euclidean <- jhsic(list(x1, x2, x3), type = "euclidean", stat_type = "V")
+
+print(c(gaussian = jhsic_gaussian,
+        laplacian = jhsic_laplacian,
+        euclidean = jhsic_euclidean))
+
+# Example 5: Using multivariate data
+x_multi1 <- matrix(rnorm(200), ncol = 2)
+x_multi2 <- matrix(rnorm(200), ncol = 2)
+x_multi3 <- matrix(rnorm(200), ncol = 2)
+jhsic_multi <- jhsic(list(x_multi1, x_multi2, x_multi3))
+print(jhsic_multi)
+
+# Example 6: Testing with non-linear relationships
+set.seed(789)
+x <- matrix(runif(100, -3, 3), ncol = 1)
+y <- matrix(x^2 + rnorm(100, sd = 0.5), ncol = 1)
+z <- matrix(exp(x) + rnorm(100, sd = 0.5), ncol = 1)
+jhsic_nonlin <- jhsic(list(x, y, z), type = "gaussian")
+print(jhsic_nonlin)
+
+# Example 7: Using grouped variables with jhsic
+# Create sample data with 3 datasets
+set.seed(123)
+n <- 100
+x1 <- matrix(rnorm(n*3), ncol = 3)  # 3 variables in x1
+x2 <- matrix(rnorm(n*4), ncol = 4)  # 4 variables in x2
+x3 <- matrix(rnorm(n*2), ncol = 2)  # 2 variables in x3
+
+# Create complex dependency structure via a common factor
+z <- runif(n, -pi, pi)
+x1[, 1] <- 2*sin(z) + 0.1*rnorm(n)
+x2[, 1] <- 2*cos(z) + 0.1*rnorm(n)
+x3[, 1] <- sin(z)*cos(z) + 0.1*rnorm(n)
+
+# Define group structure for each dataset
+groups1 <- c(1, 2, 2)        # First var in group 1, others in group 2
+groups2 <- c(1, 2, 2, 2)     # First var in group 1, others in group 2
+groups3 <- c(1, 2)           # Each var in its own group
+
+# Combine into a list matching the input list structure
+group_list <- list(groups1, groups2, groups3)
+
+# Calculate JHSIC with the group structure
+jhsic_grouped <- jhsic(list(x1, x2, x3), type = "e-dist", group = group_list)
+print(jhsic_grouped)
+
+}
+\references{
+Chakraborty, S., & Zhang, X. (2019). Distance Metrics for Measuring Joint Dependence with
+Application to Causal Inference. Journal of the American Statistical Association, 114, 1638-1650.
+}
+\seealso{
+\code{\link{dhsic}} for an alternative joint independence test
+\code{\link{hsic}} for pairwise independence test
+\code{\link{jhsic_test}} for permutation-based testing using JHSIC
 }

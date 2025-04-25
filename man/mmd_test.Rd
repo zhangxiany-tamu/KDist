@@ -7,7 +7,7 @@
 mmd_test(
   x,
   y,
-  type = "euclidean",
+  type = "gaussian",
   bw = NULL,
   expo = 1,
   scale_factor = 0.5,
@@ -15,35 +15,108 @@ mmd_test(
   u_center = FALSE,
   n_perm = 1000,
   seed = NULL,
-  cores = parallel::detectCores() - 1
+  num_cores = 1
 )
 }
 \arguments{
-\item{x}{First sample}
+\item{x}{First sample (matrix, data frame, or vector)}
 
-\item{y}{Second sample}
+\item{y}{Second sample (matrix, data frame, or vector)}
 
-\item{type}{Type of kernel or distance}
+\item{type}{Type of kernel or distance to use (default: "gaussian").
+Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist", "g-dist", or "l-dist".}
 
-\item{bw}{Bandwidth parameter}
+\item{bw}{Bandwidth parameter for kernel functions. If NULL, it will be automatically determined.}
 
-\item{expo}{Exponent parameter}
+\item{expo}{Exponent parameter for euclidean distance and polynomial kernel (default: 1).}
 
-\item{scale_factor}{Scaling factor for bandwidth}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{group}{Optional grouping of variables}
+\item{group}{Optional vector specifying group membership for each column.
+Used for group-wise distance calculations in "e-dist", "g-dist", or "l-dist".}
 
-\item{u_center}{Logical; use U-centering instead of V-centering}
+\item{u_center}{Logical; use U-centering instead of V-centering (default: FALSE).}
 
-\item{n_perm}{Number of permutations}
+\item{n_perm}{Number of permutations to use for the test (default: 1000).}
 
-\item{seed}{Random seed for reproducibility}
+\item{seed}{Random seed for reproducibility (default: NULL).}
 
-\item{cores}{Number of cores for parallel computing}
+\item{num_cores}{Number of cores for parallel computing (default: 1).}
 }
 \value{
-A list with test statistic, p-value, and permutation values
+An object of class "mmd_test" containing:
+\item{statistic}{MMD test statistic value}
+\item{p.value}{Permutation-based p-value}
+\item{permutation_values}{Vector of MMD values from permutations}
 }
 \description{
-Performs a permutation test based on the Maximum Mean Discrepancy.
+Performs a permutation test based on the Maximum Mean Discrepancy to assess whether two samples come from
+the same distribution. MMD is a powerful nonparametric two-sample test that can detect differences in
+distributions.
+}
+\details{
+The Maximum Mean Discrepancy (MMD) is a measure of the difference between two probability distributions
+based on the mean embeddings of the distributions in a reproducing kernel Hilbert space (RKHS).
+
+For two samples \eqn{X = \{x_1, \ldots, x_n\}} and \eqn{Y = \{y_1, \ldots, y_m\}}, the MMD is defined as:
+
+For kernel-based types (gaussian, laplacian, polynomial):
+\deqn{MMD^2(X, Y) = \frac{1}{n^2}\sum_{i,j=1}^{n}k(x_i, x_j) + \frac{1}{m^2}\sum_{i,j=1}^{m}k(y_i, y_j) - \frac{2}{nm}\sum_{i=1}^{n}\sum_{j=1}^{m}k(x_i, y_j)}
+
+For distance-based types (euclidean, e-dist, g-dist, l-dist):
+\deqn{MMD^2(X, Y) = \frac{2}{nm}\sum_{i=1}^{n}\sum_{j=1}^{m}d(x_i, y_j) - \frac{1}{n^2}\sum_{i,j=1}^{n}d(x_i, x_j) - \frac{1}{m^2}\sum_{i,j=1}^{m}d(y_i, y_j)}
+
+where \eqn{k(x, y)} is a kernel function and \eqn{d(x, y)} is a distance function.
+
+The null hypothesis is that the two samples come from the same distribution. The alternative hypothesis
+is that they come from different distributions. The p-value is calculated using a permutation test,
+where the samples are randomly shuffled to create the null distribution of the test statistic.
+
+When u_center = TRUE, the U-statistic version of MMD is used, which provides an unbiased estimate.
+When u_center = FALSE (default), the V-statistic version is used.
+}
+\examples{
+# Example 1: Samples from the same distribution
+set.seed(123)
+x1 <- matrix(rnorm(100 * 3), ncol = 3)  # 100 observations in 3D from N(0,1)
+y1 <- matrix(rnorm(80 * 3), ncol = 3)   # 80 observations in 3D from N(0,1)
+test1 <- mmd_test(x1, y1, type = "gaussian", n_perm = 200)
+print(test1)
+plot(test1)
+
+# Example 2: Samples from different distributions
+x2 <- matrix(rnorm(100 * 2), ncol = 2)  # From N(0,1)
+y2 <- matrix(rnorm(100 * 2, mean = 1), ncol = 2)  # From N(1,1)
+test2 <- mmd_test(x2, y2, type = "gaussian", n_perm = 200)
+print(test2)
+
+# Example 3: Using a custom bandwidth
+test3 <- mmd_test(x2, y2, type = "gaussian", bw = 0.5, n_perm = 200)
+print(test3)
+
+# Example 4: Using U-centering (unbiased estimator)
+test4 <- mmd_test(x2, y2, type = "gaussian", u_center = TRUE, n_perm = 200)
+print(test4)
+
+# Example 5: Using vectors as input
+x5 <- rnorm(50)
+y5 <- rnorm(50, mean = 0.5)
+test5 <- mmd_test(x5, y5, type = "euclidean", n_perm = 200)
+print(test5)
+
+# Example 6: Using parallel computing (if multiple cores are available)
+\dontrun{
+test_parallel <- mmd_test(x2, y2, n_perm = 1000, num_cores = 4)
+print(test_parallel)
+}
+
+}
+\references{
+Gretton, A., Borgwardt, K.M., Rasch, M.J., Schölkopf, B. and Smola, A. (2012).
+A Kernel Two-Sample Test. Journal of Machine Learning Research, 13, pp.723-773.
+}
+\seealso{
+\code{\link{mmd}} for calculating MMD without performing a hypothesis test
+\code{\link{hsic_test}} for the HSIC independence test
+\code{\link{dhsic_test}} for the d-variable HSIC test
 }

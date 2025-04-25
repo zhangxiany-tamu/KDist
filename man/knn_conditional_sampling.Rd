@@ -7,15 +7,30 @@
 knn_conditional_sampling(z_data, k = 5, weighted = TRUE)
 }
 \arguments{
-\item{z_data}{Conditioning dataset}
+\item{z_data}{Conditioning dataset (matrix or data frame). Each row represents an observation.}
 
-\item{k}{Number of nearest neighbors}
+\item{k}{Number of nearest neighbors to consider (default: 5).}
 
-\item{weighted}{Whether to use weighted sampling}
+\item{weighted}{Logical; whether to use weighted sampling based on distances (default: TRUE).
+When TRUE, closer neighbors have higher probability of being selected.}
 }
 \value{
-A vector of sampled indices
+A vector of sampled indices of the same length as the number of rows in z_data.
 }
 \description{
-Performs KNN-based conditional sampling.
+Performs KNN-based conditional sampling from a dataset. This function samples from
+the conditional distribution at each data point by randomly selecting from its K
+nearest neighbors, which serves as a nonparametric approximation to sampling from
+the true conditional distribution.
+}
+\details{
+For each observation in the input dataset, the function:
+\enumerate{
+\item Finds its K nearest neighbors based on Euclidean distance
+\item Samples one of these neighbors, either uniformly or with weights inversely
+proportional to their distances
+}
+
+This approach is particularly useful for resampling in conditional independence
+and distribution tests, as it preserves the conditional structure in the data.
 }

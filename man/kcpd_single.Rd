@@ -2,7 +2,7 @@
 % Please edit documentation in R/change_point.R
 \name{kcpd_single}
 \alias{kcpd_single}
-\title{Single Change-Point Detection}
+\title{Single Change-Point Detection Using Kernel and Distance-Based Metrics}
 \usage{
 kcpd_single(
   data,
@@ -15,35 +15,120 @@ kcpd_single(
   alpha = 0.05,
   seeds = NULL,
   method = "permutation",
-  stat_val = NULL
+  num_cores = 1
 )
 }
 \arguments{
-\item{data}{A matrix or data frame with rows representing time points}
+\item{data}{A matrix or data frame with rows representing time points (observations) and
+columns representing variables or features.}
 
-\item{type}{Type of distance to use (default: "e-dist")}
+\item{type}{Type of distance or kernel to use (default: "e-dist"). Options include:
+\itemize{
+\item "euclidean": Euclidean distance
+\item "gaussian": Gaussian kernel
+\item "laplacian": Laplacian kernel
+\item "polynomial": Polynomial kernel
+\item "e-dist": Euclidean-based aggregated distance (for high-dimensional data)
+\item "g-dist": Gaussian kernel-based aggregated distance
+\item "l-dist": Laplacian kernel-based aggregated distance
+}}
 
-\item{bw}{Bandwidth parameter}
+\item{bw}{Bandwidth parameter for kernel calculations. If NULL (default), it will be automatically determined.}
 
-\item{expo}{Exponent parameter}
+\item{expo}{Exponent parameter for distance calculation (default: 1).}
 
-\item{scale_factor}{Scaling factor for bandwidth}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{group}{Optional grouping of variables}
+\item{group}{Optional vector specifying group membership for each variable/column.
+Used for group-wise distance calculations in "e-dist", "g-dist", or "l-dist".}
 
-\item{B}{Number of permutations}
+\item{B}{Number of permutations for p-value calculation (default: 199).}
 
-\item{alpha}{Significance level}
+\item{alpha}{Significance level for determining whether a change point is significant (default: 0.05).}
 
-\item{seeds}{Random seed}
+\item{seeds}{Random seed for reproducibility. If NULL, no seed is set.}
 
-\item{method}{Testing method: "permutation" or "asymptotic"}
+\item{method}{Testing method for p-value calculation: "permutation" or "asymptotic" (default: "permutation").}
 
-\item{stat_val}{Reference statistics for asymptotic method}
+\item{num_cores}{Number of cores for parallel processing of permutations (default: 1).}
 }
 \value{
-A list with change point location, p-value, statistic, and clustering
+A list containing:
+\item{locations}{The estimated change point location (index)}
+\item{pvalue}{P-value for the detected change point}
+\item{statistic}{The test statistic value at the detected change point}
+\item{cluster}{A vector of cluster assignments (1 for observations before the change point,
+2 for observations after). If no significant change point is found (p-value > alpha),
+all observations are assigned to cluster 1.}
 }
 \description{
-Detects a single change point in time series or sequential data.
+Detects a single change point in sequential data using kernel-based generalized
+homogeneity metrics. The method is based on the high-dimensional t-test framework proposed in
+Chakraborty & Zhang (2021) and implemented for change-point detection as described in
+Chakraborty & Zhang (2021, arXiv:2105.08976).
+}
+\details{
+This function implements a kernel and distance-based approach for detecting a single structural change in multivariate
+time series data, building on the high-dimensional t-test framework for distance and kernel-based metrics.
+The method works by:
+\enumerate{
+\item Computing a distance/kernel matrix based on the input data
+\item Calculating test statistics based on the high-dimensional t-test framework using MMD (Maximum Mean Discrepancy)
+and HSIC (Hilbert-Schmidt Independence Criterion) measures
+\item Identifying the location with the maximum statistic value as the estimated change point
+\item Computing a p-value through permutation testing or asymptotic approximation
+}
+
+The approach is especially effective for high-dimensional data where traditional methods might fail,
+as it operates in kernel space rather than directly on the raw features, allowing for detection of changes in higher
+order moments even when the number of variables exceeds the sample size.
+}
+\examples{
+# Example 1: Change point in univariate time series
+set.seed(123)
+# Generate data with a change in mean at t=50
+n <- 100
+x1 <- rnorm(50, mean = 0, sd = 1)
+x2 <- rnorm(50, mean = 2, sd = 1)
+x <- c(x1, x2)
+data <- matrix(x, ncol = 1)
+
+# Detect change point
+result <- kcpd_single(data, method = "permutation", B = 99)
+print(result$locations)  # Should be close to 50
+print(result$pvalue)     # Should be < 0.05
+
+# Example 2: Change point in high-dimensional time series
+set.seed(456)
+# Generate high-dimensional data (p > n) with a change at t=60
+n <- 120
+p <- 150  # Number of variables exceeds sample size
+
+# First segment: independent variables
+X1 <- matrix(rnorm(60 * p), ncol = p)
+
+# Second segment: shifted mean
+X2 <- matrix(rnorm(60 * p, mean = 0.5), ncol = p)
+
+# Combined data
+X <- rbind(X1, X2)
+
+# Detect change point using e-dist (efficient for high-dimensional data)
+result <- kcpd_single(X, type = "e-dist", method = "permutation", B = 99)
+print(result$locations)  # Should be close to 60
+print(result$pvalue)     # Should be < 0.05
+print(table(result$cluster))  # Distribution of cluster assignments
+
+}
+\references{
+Chakraborty, S., & Zhang, X. (2021). A New Framework for Distance and Kernel-based Metrics
+in High-dimension. \emph{Electronic Journal of Statistics}, 15, 5455-5522.
+
+Chakraborty, S., & Zhang, X. (2021). High-dimensional Change-point Detection Using
+Generalized Homogeneity Metrics. arXiv:2105.08976.
+}
+\seealso{
+\code{\link{kcpd_sbs}} for detecting multiple change points using seeded binary segmentation
+\code{\link{KDist_matrix}} for details on distance/kernel matrix calculation
+\code{\link{chsic}} for computing cross HSIC
 }

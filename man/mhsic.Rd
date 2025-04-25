@@ -2,33 +2,111 @@
 % Please edit documentation in R/Joint_dep.R
 \name{mhsic}
 \alias{mhsic}
-\title{HSIC for Mutual Independence Testing in High-dimension}
+\title{HSIC and dCov for Mutual Independence Testing in High-dimension}
 \usage{
 mhsic(
   x,
-  type = "euclidean",
+  type = "gaussian",
   bw = NULL,
   expo = 1,
   scale_factor = 0.5,
-  cores = NULL
+  num_cores = 1
 )
 }
 \arguments{
 \item{x}{Matrix where each column is a variable to test for mutual independence}
 
-\item{type}{Type of kernel or distance}
+\item{type}{Type of kernel or distance to use (default: "gaussian").
+Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist", "g-dist", or "l-dist".
+Note that type = "euclidean" corresponds to the original distance covariance method
+proposed in Yao, Zhang, & Shao (2018).}
 
-\item{bw}{Bandwidth parameter}
+\item{bw}{Bandwidth parameter for kernel functions. If NULL, it will be automatically determined.}
 
-\item{expo}{Exponent parameter}
+\item{expo}{Exponent parameter for Euclidean distance and polynomial kernel (default: 1).}
 
-\item{scale_factor}{Scaling factor for bandwidth}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{cores}{Number of cores for parallel processing}
+\item{num_cores}{Number of cores for parallel processing (default: NULL, which uses
+one less than the available number of cores).}
 }
 \value{
-A list with test statistic and p-value
+A list with test statistic and p-value:
+\item{statistic}{The test statistic value}
+\item{p.value}{The p-value for the test}
 }
 \description{
-HSIC for Mutual Independence Testing in High-dimension
+Performs a test for mutual independence among multiple variables in a high-dimensional setting.
+This implementation is based on the methodology described in Yao, Zhang, & Shao (2018),
+which was originally developed for distance covariance. The original method corresponds to
+using this function with type = "euclidean", while other kernel options extend the approach
+to different dependency measures.
+}
+\details{
+The mutual independence test is designed to detect dependencies among all
+variables simultaneously in high-dimensional settings. The method is particularly effective
+when the number of variables (p) is large, potentially even larger than the sample size (n).
+
+This implementation is based on the approach of Yao, Zhang, & Shao (2018), which was
+specifically developed for distance covariance (corresponding to type = "euclidean").
+The method uses pairwise dependency calculations to create a test statistic that follows
+a standard normal distribution under the null hypothesis of mutual independence.
+This approach avoids computationally intensive permutation procedures, making it
+suitable for high-dimensional data.
+
+When type is set to other values, the function extends the original methodology to use
+different kernel or distance measures, which may be more appropriate for specific types
+of dependencies.
+
+When the number of variables is large (p > 60), the function automatically uses
+parallel computing to speed up the calculation.
+}
+\examples{
+# Example 1: High-dimensional data with mutual independence
+set.seed(123)
+n <- 100  # Sample size
+p <- 200  # High dimensionality
+# Generate independent high-dimensional data
+x_indep <- matrix(rnorm(n * p), ncol = p)
+# Using the original distance covariance method (Yao et al., 2018)
+test_indep <- mhsic(x_indep, type = "euclidean")
+print(test_indep)
+
+# Example 2: High-dimensional data with dependence
+# Create dependency structure: first 20 variables are dependent
+x_dep <- matrix(rnorm(n * p), ncol = p)
+# Add a common factor to first 20 variables
+common_factor <- rnorm(n)
+for(i in 1:20) {
+  x_dep[, i] <- x_dep[, i] + 0.7 * common_factor
+}
+test_dep <- mhsic(x_dep, type = "euclidean")
+print(test_dep)
+
+# Example 3: Using different kernels with high-dimensional data
+p_moderate <- 300  # Moderately high dimensionality
+x_mod <- matrix(rnorm(n * p_moderate), ncol = p_moderate)
+# Make first 20 variables dependent
+common_factor <- rnorm(n)
+for(i in 1:20) {
+  x_mod[, i] <- x_mod[, i] + 0.8 * common_factor
+}
+# Original distance covariance method (Yao et al., 2018)
+test_dCov <- mhsic(x_mod, type = "euclidean", num_cores = 2)
+# Extensions using other kernels
+test_gaussian <- mhsic(x_mod, type = "gaussian", num_cores = 2)
+test_laplacian <- mhsic(x_mod, type = "laplacian", num_cores = 2)
+cat("Distance covariance p-value:", test_dCov$p.value, "\n")
+cat("Gaussian kernel p-value:", test_gaussian$p.value, "\n")
+cat("Laplacian kernel p-value:", test_laplacian$p.value, "\n")
+
+}
+\references{
+Yao, S., Zhang, X., & Shao, X. (2018). Testing Mutual Independence in High Dimension
+via Distance Covariance. Journal of the Royal Statistical Society: Series B, 80, 455-480.
+}
+\seealso{
+\code{\link{hsic}} for pairwise independence test
+\code{\link{jhsic}} for joint independence test
+\code{\link{dhsic}} for d-variable HSIC test
 }

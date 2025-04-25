@@ -2,7 +2,7 @@
 % Please edit documentation in R/KDist.R
 \name{mmd}
 \alias{mmd}
-\title{Calculate Maximum Mean Discrepancy (MMD)}
+\title{Maximum Mean Discrepancy (MMD)}
 \usage{
 mmd(
   x,
@@ -42,5 +42,74 @@ mmd(
 MMD value
 }
 \description{
-Calculate Maximum Mean Discrepancy (MMD)
+Calculates the Maximum Mean Discrepancy between two samples, which is a measure of the
+difference between distributions. This implementation is based on the method described in
+Gretton et al. (2012).
+}
+\examples{
+# Create two sample datasets
+set.seed(123)
+x <- matrix(rnorm(100), nrow = 20, ncol = 5)  # First sample
+y <- matrix(rnorm(100, mean = 0.5), nrow = 20, ncol = 5)  # Second sample with different mean
+
+# Calculate MMD with Euclidean distance (default)
+mmd_euclidean <- mmd(x, y)
+print(mmd_euclidean)
+
+# Calculate MMD with Gaussian kernel
+mmd_gaussian <- mmd(x, y, type = "gaussian")
+print(mmd_gaussian)
+
+# Calculate MMD with Laplacian kernel
+mmd_laplacian <- mmd(x, y, type = "laplacian")
+print(mmd_laplacian)
+
+# Calculate MMD with polynomial kernel
+mmd_polynomial <- mmd(x, y, type = "polynomial", expo = 2)
+print(mmd_polynomial)
+
+# Using custom bandwidth parameter
+mmd_custom_bw <- mmd(x, y, type = "gaussian", bw = 0.7)
+print(mmd_custom_bw)
+
+# Compare V-centering and U-centering
+mmd_v_center <- mmd(x, y, u_center = FALSE)  # Default
+mmd_u_center <- mmd(x, y, u_center = TRUE)
+print(c("V-centering:", mmd_v_center, "U-centering:", mmd_u_center))
+
+# Using vector inputs
+x_vec <- rnorm(30)
+y_vec <- rnorm(30, mean = 0.5)
+mmd_vectors <- mmd(x_vec, y_vec)
+print(mmd_vectors)
+
+# Using the group parameter for grouped variables
+# Suppose the 5 columns are in 3 groups
+group_vec <- c(1, 1, 2, 2, 3)
+mmd_grouped <- mmd(x, y, type = "e-dist", group = group_vec)
+print(mmd_grouped)
+
+# IMPORTANT: When providing a pre-computed distance matrix, make sure to specify
+# the correct 'type' parameter that matches how the matrix was calculated
+
+# Example with a pre-computed Euclidean distance matrix
+combined_data <- rbind(x, y)
+D_euclidean <- KDist_matrix(combined_data, type = "euclidean")
+mmd_euclidean <- mmd(D_euclidean, n = nrow(x), m = nrow(y), type = "euclidean")
+
+# Example with a pre-computed Gaussian kernel matrix
+D_gaussian <- KDist_matrix(combined_data, type = "gaussian")
+mmd_gaussian <- mmd(D_gaussian, n = nrow(x), m = nrow(y), type = "gaussian")
+
+# Using the wrong type parameter will give incorrect results!
+# For example, this would be INCORRECT:
+\dontrun{
+# D_gaussian is a Gaussian kernel matrix but type="euclidean" is specified
+mmd_wrong <- mmd(D_gaussian, n = nrow(x), m = nrow(y), type = "euclidean")
+}
+
+}
+\references{
+Gretton, A., Borgwardt, K. M., Rasch, M. J., Schölkopf, B., & Smola, A. (2012).
+A kernel two-sample test. \emph{Journal of Machine Learning Research, 13}, 723-773.
 }

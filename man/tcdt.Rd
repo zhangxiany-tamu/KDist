@@ -5,75 +5,121 @@
 \title{Two-Sample Conditional Distribution Test}
 \usage{
 tcdt(
-  X1,
-  X2,
-  Y1,
-  Y2,
+  formula,
+  data,
   x0 = NULL,
-  B = 299,
-  h = NULL,
-  adj_bw = 0.1,
-  const_factor = 1,
-  h_boot = NULL,
-  adj_bw_boot = 0,
-  const_factor_boot = 1,
-  scale_factor = 1,
-  kern_smooth = c("gaussian", "epanechnikov", "uniform"),
-  nu = 2,
   stat = c("cmmd", "cged"),
-  kern_mmd = c("gaussian", "laplacian"),
+  kernel = c("gaussian", "laplacian"),
+  smooth_kernel = c("gaussian", "epanechnikov", "uniform"),
   sampling_method = c("bootstrap", "knn"),
+  B = 299,
+  bandwidth = NULL,
+  bandwidth_adjust = 0.1,
   knn_k = 5,
-  knn_weighted = FALSE,
-  num_cores = parallel::detectCores() - 1
+  num_cores = 1
 )
 }
 \arguments{
-\item{X1}{First conditioning dataset}
+\item{formula}{A formula of the form \code{Y1 | X1 ~ Y2 | X2} or \code{Y1 | X1 ~ Y2 | X2 | local(x0)}.
+For the local testing case, \code{x0} specifies the point at which to test.
+Multi-dimensional variables can be included using the \code{+} operator, e.g.,
+\code{Y1.1 + Y1.2 | X1.1 + X1.2 ~ Y2.1 + Y2.2 | X2.1 + X2.2}.}
 
-\item{X2}{Second conditioning dataset}
+\item{data}{A data frame containing all variables specified in the formula.}
 
-\item{Y1}{First response dataset}
+\item{x0}{Local point for local testing (default: NULL for global testing). Can be specified
+either in the formula using \code{local(x0)} or as a separate parameter.}
 
-\item{Y2}{Second response dataset}
+\item{stat}{Test statistic: "cmmd" for conditional maximum mean discrepancy or
+"cged" for conditional generalized energy distance (default: "cmmd").}
 
-\item{x0}{Local point for local testing (NULL for global testing)}
+\item{kernel}{Type of kernel for Y. Options: "gaussian" or "laplacian" for CMMD,
+automatically set to "euclidean" for CGED (default: "gaussian").}
 
-\item{B}{Number of bootstrap replications}
+\item{smooth_kernel}{Type of kernel for X smoothing: "gaussian", "epanechnikov",
+or "uniform" (default: "gaussian").}
 
-\item{h}{Bandwidth for local smoothing of X}
+\item{sampling_method}{Method for resampling: "bootstrap" or "knn" (default: "bootstrap").}
 
-\item{adj_bw}{Adjustment factor for automatic bandwidth}
+\item{B}{Number of bootstrap or resampling iterations (default: 299).}
 
-\item{const_factor}{Constant factor for automatic bandwidth}
+\item{bandwidth}{Controls the bandwidth for X smoothing:
+- NULL (default): automatic selection
+- "undersmoothing": use undersmoothing
+- A numeric value: use this value as a multiplier for automatic bandwidth
+- A function: specify custom bandwidth function}
 
-\item{h_boot}{Bandwidth for bootstrap}
+\item{bandwidth_adjust}{Adjustment factor for automatic bandwidth (default: 0.1).}
 
-\item{adj_bw_boot}{Adjustment factor for bootstrap bandwidth}
+\item{knn_k}{Number of nearest neighbors when sampling_method="knn" (default: 5).}
 
-\item{const_factor_boot}{Constant factor for bootstrap bandwidth}
-
-\item{scale_factor}{Scaling factor for bandwidth}
-
-\item{kern_smooth}{Kernel type for smoothing}
-
-\item{nu}{Order of smoothing kernel}
-
-\item{stat}{Test statistic type}
-
-\item{kern_mmd}{Kernel type for MMD}
-
-\item{sampling_method}{Sampling method}
-
-\item{knn_k}{Number of nearest neighbors for KNN}
-
-\item{knn_weighted}{Whether to use weighted KNN}
-
-\item{num_cores}{Number of cores for parallel computing}
+\item{num_cores}{Number of cores for parallel computation (default: 1).}
 }
 \value{
-A list with test results
+A list containing:
+\item{problem}{Type of problem: "global" or "local"}
+\item{stat}{Test statistic value}
+\item{pvalue}{P-value for the test}
+\item{bandwidths}{Bandwidths used for smoothing}
+\item{method}{Testing method details}
+\item{formula}{The original formula}
+\item{call}{The function call}
 }
 \description{
-Performs a test for differences in conditional distributions.
+Performs a test for differences in conditional distributions using kernel-based methods.
+This function implements both global and local two-sample conditional distribution testing
+as described in Yan, Li, & Zhang (2024).
+}
+\details{
+The TCDT tests whether two conditional distributions are equal, either globally:
+\deqn{H_0: P(Y_1|X_1) = P(Y_2|X_2)}
+for all \eqn{X}, or locally at a specific point \eqn{x_0}:
+\deqn{H_0: P(Y_1|X_1=x_0) = P(Y_2|X_2=x_0)}
+
+The formula interface uses the syntax \code{Y1 | X1 ~ Y2 | X2}, where:
+\itemize{
+\item Y1 and Y2 are the response variables
+\item X1 and X2 are the conditioning variables
+\item The \code{|} operator separates response and conditioning variables in each sample
+\item The \code{~} operator separates the two samples
+}
+}
+\examples{
+# Example 1: Global test with formula interface
+set.seed(123)
+n <- 100
+df <- data.frame(
+  X1 = rnorm(n),
+  Y1 = rnorm(n),
+  X2 = rnorm(n),
+  Y2 = rnorm(n)
+)
+
+# Make Y1|X1 and Y2|X2 follow different distributions
+df$Y1 <- df$X1 + rnorm(n)
+df$Y2 <- df$X2^2 + rnorm(n)
+
+# Test the conditional distributions
+result <- tcdt(Y1 | X1 ~ Y2 | X2, data = df, B = 100)
+print(result)
+
+# Example 2: Local test at a specific point
+result2 <- tcdt(Y1 | X1 ~ Y2 | X2 | local(0), data = df, B = 100)
+# OR use the x0 parameter
+result2b <- tcdt(Y1 | X1 ~ Y2 | X2, data = df, x0 = 0, B = 100)
+
+# Example 3: Multi-dimensional variables
+df$X1.2 <- rnorm(n)
+df$X2.2 <- rnorm(n)
+result3 <- tcdt(Y1 | X1 + X1.2 ~ Y2 | X2 + X2.2, data = df, B = 100)
+
+}
+\references{
+Yan, J., Li, Z., & Zhang, X. (2024). Distance and Kernel-Based Measures for Global and Local
+Two-Sample Conditional Distribution Testing. \emph{arXiv preprint arXiv:2210.08149}.
+}
+\seealso{
+\code{\link{kcid}} for kernel conditional independence testing
+\code{\link{knn_conditional_sampling}} for the KNN sampling method used in resampling
+\code{\link{kernel_for_smooth}} for the kernel functions used in local smoothing
 }

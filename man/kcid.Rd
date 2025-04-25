@@ -5,75 +5,141 @@
 \title{Kernel Conditional Independence Test}
 \usage{
 kcid(
-  data_x,
-  data_y,
-  data_z,
-  type_x = "gaussian",
-  type_y = "gaussian",
-  type_z = "gaussian",
-  bw_x = NULL,
-  bw_y = NULL,
-  bw_z = NULL,
-  expo_x = 1,
-  expo_y = 1,
-  expo_z = 1,
+  formula,
+  data,
+  type = c("gaussian", "gaussian", "gaussian"),
+  bw = NULL,
+  expo = c(1, 1, 1),
   scale_factor = 0.5,
-  group_x = NULL,
-  group_y = NULL,
-  group_z = NULL,
+  groups = NULL,
   method = c("bootstrap", "knn"),
   B = 299,
   knn_k = 5,
   knn_weighted = FALSE,
-  num_cores = parallel::detectCores() - 1
+  num_cores = 1
 )
 }
 \arguments{
-\item{data_x}{First dataset}
+\item{formula}{A formula of the form x ~ y | z, where x is the first variable,
+y is the second variable, and z is the conditioning variable or variables.
+Multiple variables can be included using the standard formula notation,
+e.g., x ~ y | z1 + z2 to condition on both z1 and z2.}
 
-\item{data_y}{Second dataset}
+\item{data}{A data frame containing the variables in the formula.}
 
-\item{data_z}{Conditioning dataset}
+\item{type}{A character vector of length 3 specifying the kernel types for x, y, and z.
+Options include "gaussian", "laplacian", "polynomial", "euclidean", "e-dist", "g-dist", or "l-dist".
+Default is c("gaussian", "gaussian", "gaussian").}
 
-\item{type_x}{Type of kernel for first dataset}
+\item{bw}{A numeric vector of length 3 specifying bandwidth parameters for x, y, and z.
+If NULL (default), bandwidths will be automatically determined.}
 
-\item{type_y}{Type of kernel for second dataset}
+\item{expo}{A numeric vector of length 3 specifying exponent parameters for x, y, and z.
+Default is c(1, 1, 1).}
 
-\item{type_z}{Type of kernel for conditioning dataset}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{bw_x}{Bandwidth parameter for first dataset}
+\item{groups}{A list of length 3, containing optional group membership vectors
+for columns in x, y, and z. Used for group-wise distance calculations.}
 
-\item{bw_y}{Bandwidth parameter for second dataset}
+\item{method}{Resampling method for obtaining the null distribution (default: "bootstrap").
+Options are "bootstrap" or "knn".}
 
-\item{bw_z}{Bandwidth parameter for conditioning dataset}
+\item{B}{Number of bootstrap or resampling iterations (default: 299).}
 
-\item{expo_x}{Exponent parameter for first dataset}
+\item{knn_k}{Number of nearest neighbors to use when method = "knn" (default: 5).}
 
-\item{expo_y}{Exponent parameter for second dataset}
+\item{knn_weighted}{Logical; whether to use weighted KNN when method = "knn" (default: FALSE).}
 
-\item{expo_z}{Exponent parameter for conditioning dataset}
-
-\item{scale_factor}{Scaling factor for bandwidth}
-
-\item{group_x}{Grouping for first dataset variables}
-
-\item{group_y}{Grouping for second dataset variables}
-
-\item{group_z}{Grouping for conditioning dataset variables}
-
-\item{method}{Resampling method: "bootstrap" or "knn"}
-
-\item{B}{Number of bootstrap replicates}
-
-\item{knn_k}{Number of nearest neighbors for KNN method}
-
-\item{knn_weighted}{Whether to use weighted KNN}
-
-\item{num_cores}{Number of cores for parallel computing}
+\item{num_cores}{Number of cores for parallel processing (default: 1).}
 }
 \value{
-A list with p-value, test statistic, and other results
+A list containing:
+\item{pvalue}{P-value for the conditional independence test}
+\item{statistic}{Test statistic value}
+\item{resampling_stats}{Vector of test statistics from resampling}
+\item{method}{The resampling method used}
+\item{B}{Number of resampling iterations}
+\item{method_params}{Parameters used for the resampling method (when applicable)}
 }
 \description{
-Tests for conditional independence between two variables given a third variable.
+Performs a kernel-based conditional independence test to assess whether two variables
+are conditionally independent given a third variable. This implementation follows the
+methodology described in Zhang et al. (2012).
+}
+\details{
+The kernel conditional independence test (KCID) evaluates whether X and Y are conditionally
+independent given Z, denoted as X ⊥⊥ Y | Z. The test uses the conditional cross-covariance
+operator in reproducing kernel Hilbert spaces (RKHS) as a measure of conditional dependence.
+
+The formula interface uses the '|' operator to specify conditioning variables. For example,
+the formula 'x ~ y | z' tests whether x and y are conditionally independent given z.
+}
+\examples{
+# Example 1: Conditional Independence
+set.seed(123)
+n <- 200
+df <- data.frame(
+  z = runif(n),
+  stringsAsFactors = FALSE
+)
+df$x <- df$z + 0.5*rnorm(n)  # X depends on Z
+df$y <- df$z + 0.5*rnorm(n)  # Y depends on Z, not on X given Z
+
+# Test conditional independence with formula interface
+result1 <- kcid(x ~ y | z, data = df, method = "bootstrap", B = 100)
+print(paste("Example 1 p-value:", result1$pvalue))
+# The p-value should be high, indicating conditional independence
+
+# Example 2: Conditional Dependence
+set.seed(456)
+n <- 200
+df2 <- data.frame(
+  z = runif(n),
+  x = rnorm(n),
+  stringsAsFactors = FALSE
+)
+# Y depends on both X and Z - conditional dependence
+df2$y <- 0.7*df2$x + 0.7*df2$z + 0.3*rnorm(n)
+
+# Test conditional dependence
+result2 <- kcid(x ~ y | z, data = df2, method = "bootstrap", B = 100)
+print(paste("Example 2 p-value:", result2$pvalue))
+# The p-value should be low, indicating conditional dependence
+
+# Example 3: Nonlinear Conditional Dependence
+set.seed(789)
+n <- 200
+df3 <- data.frame(
+  z = runif(n, -1, 1),
+  x = rnorm(n),
+  stringsAsFactors = FALSE
+)
+# Y depends on X^2 and Z - nonlinear conditional dependence
+df3$y <- df3$x^2 + df3$z + 0.3*rnorm(n)
+
+# Test nonlinear conditional dependence
+result3 <- kcid(x ~ y | z, data = df3, method = "bootstrap", B = 100)
+print(paste("Example 3 p-value:", result3$pvalue))
+# The p-value should be low, indicating conditional dependence
+
+# Example 4: Conditioning on multiple variables
+set.seed(101)
+n <- 200
+df4 <- data.frame(
+  z1 = runif(n),
+  z2 = runif(n),
+  stringsAsFactors = FALSE
+)
+df4$x <- df4$z1 + 0.5*rnorm(n)
+df4$y <- df4$z1 + df4$z2 + 0.3*rnorm(n)
+
+# Test conditioning on multiple variables
+result4 <- kcid(x ~ y | z1 + z2, data = df4, method = "knn", knn_k = 10, B = 100)
+print(paste("Example 4 p-value:", result4$pvalue))
+
+}
+\references{
+Zhang, K., Peters, J., Janzing, D., & Schölkopf, B. (2012). Kernel-based conditional
+independence test and application in causal discovery. \emph{arXiv preprint arXiv:1202.3775}.
 }

@@ -14,21 +14,81 @@ dhsic(
 )
 }
 \arguments{
-\item{x}{List of matrices or data frames}
+\item{x}{List of matrices or vectors, where each element corresponds to a random variable}
 
-\item{type}{Type of kernel or distance}
+\item{type}{Type of kernel or distance to use (default: "gaussian").
+Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist", "g-dist", or "l-dist".}
 
-\item{bw}{Bandwidth parameter}
+\item{bw}{Bandwidth parameter for kernel functions. If NULL, it will be automatically determined.}
 
-\item{expo}{Exponent parameter}
+\item{expo}{Exponent parameter for Euclidean distance and polynomial kernel (default: 1).}
 
-\item{scale_factor}{Scaling factor for bandwidth}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{group}{Optional grouping of variables}
+\item{group}{Optional list specifying group membership for each column in the corresponding input list elements.
+The length of the group list should match the length of the input list x, where each element
+contains the grouping information for the respective element in x. Used for group-wise
+distance calculations in "e-dist", "g-dist", or "l-dist".}
 }
 \value{
 dHSIC value
 }
 \description{
-Calculate the dHSIC for multiple datasets.
+Calculates the dHSIC for measuring mutual independence among multiple random variables.
+This implementation follows the methodology described in Pfister et al. (2018).
+While pairwise independence tests can detect dependence between pairs of variables,
+they may miss higher-order dependencies among three or more variables. The dHSIC
+addresses this limitation by providing a single test statistic for mutual independence.
+}
+\details{
+The d-variable Hilbert-Schmidt Independence Criterion (dHSIC) extends the pairwise HSIC to
+measure mutual independence among d random variables. For d random variables
+\eqn{X^{(1)}, X^{(2)}, \ldots, X^{(d)}}, the dHSIC is defined as:
+
+\deqn{dHSIC(X^{(1)}, \ldots, X^{(d)}) = ||\otimes_{j=1}^{d} \mu_{X^{(j)}} - \mu_{X^{(1)},\ldots,X^{(d)}}||^2_{\mathcal{H}}}
+
+where \eqn{\mu_{X^{(j)}}} is the mean embedding of the distribution of \eqn{X^{(j)}} in a
+reproducing kernel Hilbert space (RKHS), \eqn{\mu_{X^{(1)},\ldots,X^{(d)}}} is the joint
+embedding, and \eqn{\otimes} denotes the tensor product.
+
+dHSIC can detect higher-order dependencies among multiple variables that might be missed
+when only testing pairs of variables.
+}
+\examples{
+# Example 1: Variables with pairwise independence but mutual dependence
+set.seed(456)
+u <- runif(100, -pi, pi)
+x1 <- matrix(sin(u), ncol = 1)
+x2 <- matrix(cos(u), ncol = 1)
+x3 <- matrix(sin(u) * cos(u), ncol = 1)
+dhsic_val <- dhsic(list(x1, x2, x3), type = "gaussian")
+print(dhsic_val)
+
+# Example 2: Using different kernel types
+dhsic_gaussian <- dhsic(list(x1, x2, x3), type = "gaussian")
+dhsic_laplacian <- dhsic(list(x1, x2, x3), type = "laplacian")
+dhsic_euclidean <- dhsic(list(x1, x2, x3), type = "euclidean")
+print(c(gaussian = dhsic_gaussian,
+        laplacian = dhsic_laplacian,
+        euclidean = dhsic_euclidean))
+
+# Example 3: Using multivariate data
+x_multi1 <- matrix(rnorm(200), ncol = 2)  # 2D data
+x_multi2 <- matrix(rnorm(200), ncol = 2)  # 2D data
+# Create dependency: second dataset depends on first
+x_multi2 <- x_multi2 + 0.7 * x_multi1
+x_multi3 <- matrix(rnorm(200), ncol = 2)  # Independent 2D data
+dhsic_multi <- dhsic(list(x_multi1, x_multi2, x_multi3))
+print(dhsic_multi)
+
+}
+\references{
+Pfister, N., Bühlmann, P., Schölkopf, B., & Peters, J. (2018).
+Kernel-based tests for joint independence. Journal of the Royal Statistical Society:
+Series B (Statistical Methodology), 80(1), 5-31.
+}
+\seealso{
+\code{\link{jhsic}} for an alternative joint independence measure
+\code{\link{hsic}} for pairwise independence test
+\code{\link{dhsic_test}} for permutation-based testing using dHSIC
 }

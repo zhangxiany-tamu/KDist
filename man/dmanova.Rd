@@ -2,7 +2,7 @@
 % Please edit documentation in R/dmanova.R
 \name{dmanova}
 \alias{dmanova}
-\title{Kernel and Distance-Based MANOVA}
+\title{Distance-Based Multivariate Analysis of Variance (D-MANOVA)}
 \usage{
 dmanova(
   formula,
@@ -15,45 +15,117 @@ dmanova(
   method = c("asymptotic", "permutation"),
   n_perm = 999,
   parallel = FALSE,
-  n_cores = NULL,
-  contr.unordered = "contr.sum",
-  contr.ordered = "contr.poly",
-  returnG = FALSE
+  num_cores = NULL,
+  contrasts = NULL,
+  returnG = FALSE,
+  is_distance = FALSE
 )
 }
 \arguments{
-\item{formula}{A formula with the response on the left and predictors on the right}
+\item{formula}{A formula of the form Y ~ X | Z, where Y is the response, X contains
+the predictors of interest, and Z contains the covariates to adjust for.}
 
-\item{data}{An optional data frame containing the variables in the formula}
+\item{data}{An optional data frame containing the variables in the formula.}
 
-\item{type}{Type of distance to use (default: "euclidean")}
+\item{type}{Type of distance or kernel to use for the response (default: "euclidean").
+Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist",
+"g-dist", or "l-dist".}
 
-\item{bw}{Bandwidth parameter (for kernel distances)}
+\item{bw}{Bandwidth parameter for kernel distances. If NULL, it will be automatically determined.}
 
-\item{expo}{Exponent parameter}
+\item{expo}{Exponent parameter for Euclidean distance and polynomial kernel (default: 1).}
 
-\item{scale_factor}{Scaling factor for bandwidth}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{group}{Optional grouping of variables}
+\item{group}{Optional vector specifying group membership for each variable in the response.
+The length should match the number of columns in the response matrix.}
 
-\item{method}{Testing method: "asymptotic" or "permutation"}
+\item{method}{Testing method (default: "asymptotic"). Options are:
+\itemize{
+\item \code{"asymptotic"}: Uses an asymptotic approximation for the p-value
+\item \code{"permutation"}: Uses permutation testing for the p-value
+}}
 
-\item{n_perm}{Number of permutations when method="permutation"}
+\item{n_perm}{Number of permutations to use when \code{method = "permutation"} (default: 999).}
 
-\item{parallel}{Logical; whether to use parallel processing}
+\item{parallel}{Logical; whether to use parallel processing for permutation testing (default: FALSE).}
 
-\item{n_cores}{Number of cores for parallel processing}
+\item{num_cores}{Number of cores for parallel processing. If NULL, uses all available cores minus one.}
 
-\item{contr.unordered}{Contrast method for unordered factors}
+\item{contrasts}{Contrasts for factor variables (default: NULL, which uses contr.sum for unordered factors
+and contr.poly for ordered factors).}
 
-\item{contr.ordered}{Contrast method for ordered factors}
+\item{returnG}{Logical; whether to return the centered distance matrix G (default: FALSE).}
 
-\item{returnG}{Logical; whether to return the G matrix}
+\item{is_distance}{Logical; whether the input Y is already a distance matrix (default: FALSE).}
 }
 \value{
-A list containing ANOVA table and other test results
+A list containing:
+\item{aov.tab}{ANOVA table with F-statistic, R-squared values, and p-value}
+\item{df}{Degrees of freedom parameter for the asymptotic approximation (when applicable)}
+\item{call}{The function call}
+\item{G}{The centered distance matrix (if \code{returnG = TRUE})}
+\item{perm.F}{Vector of F-statistics from permutations (when \code{method = "permutation"})}
+\item{n_perm}{Number of permutations used (when \code{method = "permutation"})}
 }
 \description{
-Performs kernel/distance-based multivariate analysis of variance.
-Only the response variable will be transformed into a kernel or distance matrix.
+Performs distance-based multivariate analysis of variance (D-MANOVA) for testing
+the dependence of a multivariate response Y on predictors X after adjusting for
+covariates Z.
+}
+\details{
+D-MANOVA transforms the multivariate response into a kernel or distance matrix and
+then tests whether this distance structure depends on a set of predictors after
+accounting for covariates. The approach is based on partitioning the total sum of
+squares of the centered distance matrix.
+
+The formula interface \code{Y ~ X | Z} is used to specify that we want to test the
+dependence of Y on X after adjusting for Z. By default, Z will contain an intercept.
+
+If the input Y is already a distance matrix, it will be used directly (with a sign change
+if needed), bypassing the distance calculation step.
+
+When \code{method = "asymptotic"}, the function uses an asymptotic approximation to
+calculate the p-value. When \code{method = "permutation"}, a permutation procedure
+is used to obtain the p-value, which is more robust but computationally more intensive.
+}
+\examples{
+# Example 1: Basic usage with multivariate response
+set.seed(123)
+n <- 100
+X1 <- factor(sample(1:3, n, replace = TRUE))
+X2 <- runif(n)
+Z1 <- runif(n)
+Z2 <- factor(sample(1:2, n, replace = TRUE))
+
+# Create multivariate response
+Y <- matrix(rnorm(n*5), ncol = 5)
+Y[,1] <- Y[,1] + as.numeric(X1) + Z1
+Y[,2] <- Y[,2] + X2 + as.numeric(Z2)
+
+# Combine data
+dataset <- data.frame(X1 = X1, X2 = X2, Z1 = Z1, Z2 = Z2)
+
+# Test dependence of Y on X1 and X2 after adjusting for Z1 and Z2
+result1 <- dmanova(Y ~ X1 + X2 | Z1 + Z2, data = dataset)
+print(result1$aov.tab)
+
+# Example 2: Using a pre-computed distance matrix
+# Calculate a distance matrix first
+D <- as.matrix(dist(Y))
+# Use the distance matrix directly
+result2 <- dmanova(D ~ X1 + X2 | Z1 + Z2, data = dataset, is_distance = TRUE)
+print(result2$aov.tab)
+
+}
+\references{
+Chen, J., & Zhang, X. (2022). D-MANOVA: Fast Distance-based Multivariate Analysis
+of Variance for Large-scale Microbiome Association Studies. \emph{Bioinformatics}, 38, 286-288.
+
+Legendre, P., & Anderson, M. J. (1999). Distance-based redundancy analysis:
+Testing multispecies responses in multifactorial ecological experiments.
+\emph{Ecological Monographs}, 69(1), 1-24.
+
+McArdle, B. H., & Anderson, M. J. (2001). Fitting multivariate models to community data:
+A comment on distance-based redundancy analysis. \emph{Ecology}, 82(1), 290-297.
 }

@@ -7,7 +7,7 @@
 chsic(
   x,
   y = NULL,
-  type = "euclidean",
+  type = "gaussian",
   bw = NULL,
   expo = 1,
   scale_factor = 0.5,
@@ -33,5 +33,61 @@ chsic(
 Cross HSIC value
 }
 \description{
-Calculates the cross HSIC between two samples.
+Calculates the cross HSIC between two samples. This is an extension of the notion of
+cross distance covariance (cdCov) proposed in Chakraborty & Zhang (2021). This quantity
+appears in the asymptotic variance of MMD or (generalized) energy distance in the
+high-dimensional setting.
+}
+\examples{
+# Example 1: Basic usage with randomly generated data
+set.seed(123)
+x <- matrix(rnorm(100), ncol = 1)
+y <- matrix(rnorm(100), ncol = 1)
+chsic_value <- chsic(x, y)
+print(chsic_value)
+
+# Example 2: Using dependent data
+x2 <- matrix(1:100, ncol = 1)
+y2 <- matrix(1:100 + rnorm(100, sd = 0.5), ncol = 1)
+chsic_value2 <- chsic(x2, y2)
+print(chsic_value2)
+
+# Example 3: Using different distance/kernel types
+chsic_euclidean <- chsic(x2, y2, type = "euclidean")
+chsic_gaussian <- chsic(x2, y2, type = "gaussian")
+chsic_laplacian <- chsic(x2, y2, type = "laplacian")
+print(c(euclidean = chsic_euclidean,
+       gaussian = chsic_gaussian,
+       laplacian = chsic_laplacian))
+
+# Example 4: Using a pre-computed cross-distance matrix
+# First combine the samples
+combined_x <- rbind(x2, y2)
+# Calculate the full distance matrix
+D <- KDist_matrix(combined_x, type = "euclidean")
+# Extract the cross-distance matrix (upper-right quadrant)
+n <- nrow(x2)
+m <- nrow(y2)
+D_cross <- D[1:n, (n+1):(n+m)]
+# Calculate chsic using the cross-distance matrix
+chsic_precomputed <- chsic(D_cross)
+print(chsic_precomputed)
+
+# Example 5: Using chsic with vector inputs
+x_vec <- rnorm(100)
+y_vec <- rnorm(100)
+chsic_vec <- chsic(x_vec, y_vec)
+print(chsic_vec)
+
+# Example 6: Using multivariate data
+x_multi <- matrix(rnorm(200), ncol = 2)
+y_multi <- matrix(rnorm(200), ncol = 2)
+chsic_multi <- chsic(x_multi, y_multi)
+print(chsic_multi)
+
+}
+\references{
+Chakraborty, S., & Zhang, X. (2021). A New Framework for Distance and
+Kernel-based Metrics in High-dimension. \emph{Electronic Journal of Statistics, 15},
+5455-5522.
 }

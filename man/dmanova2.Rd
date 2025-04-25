@@ -2,49 +2,148 @@
 % Please edit documentation in R/dmanova.R
 \name{dmanova2}
 \alias{dmanova2}
-\title{Kernel and Distance-Based MANOVA}
+\title{Fully Distance-Based Multivariate Analysis of Variance (D-MANOVA2)}
 \usage{
 dmanova2(
   formula,
   data = NULL,
-  type_rep = "euclidean",
-  type_cov = "euclidean",
-  expo_rep = 1,
-  expo_cov = 1,
-  n_perm = 299,
+  response_params = list(type = "euclidean", bw = NULL, expo = 2, group = NULL),
+  covariate_params = list(type = "euclidean", bw = NULL, expo = 2),
+  scale_factor = 0.5,
+  epsilon = 0.001,
+  n_perm = 999,
   parallel = FALSE,
-  n_cores = NULL,
-  contr.unordered = "contr.sum",
-  contr.ordered = "contr.poly"
+  num_cores = NULL,
+  contrasts = NULL,
+  returnD = FALSE,
+  is_distance = FALSE
 )
 }
 \arguments{
-\item{formula}{A formula with the response on the left and predictors on the right}
+\item{formula}{A formula of the form Y ~ X | Z, where Y is the response, X contains
+the predictors of interest, and Z contains the covariates to adjust for.}
 
-\item{data}{An optional data frame containing the variables in the formula}
+\item{data}{An optional data frame containing the variables in the formula.}
 
-\item{type_rep}{Type of distance for response}
+\item{response_params}{A list of parameters for calculating the distance/kernel matrix of the response:
+\itemize{
+\item \code{type}: Type of distance or kernel to use (default: "euclidean").
+Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist",
+"g-dist", or "l-dist".
+\item \code{bw}: Bandwidth parameter for kernel distances. If NULL, it will be automatically determined.
+\item \code{expo}: Exponent parameter for Euclidean distance and polynomial kernel (default: 2).
+\item \code{group}: Optional vector specifying group membership for each variable in the response.
+The length should match the number of columns in the response matrix.
+}}
 
-\item{type_cov}{Type of distance for covariates}
+\item{covariate_params}{A list of parameters for calculating the distance/kernel matrices of predictors and covariates:
+\itemize{
+\item \code{type}: Type of distance or kernel to use (default: "euclidean").
+Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist",
+"g-dist", or "l-dist".
+\item \code{bw}: Bandwidth parameter for kernel distances. If NULL, it will be automatically determined.
+\item \code{expo}: Exponent parameter for Euclidean distance and polynomial kernel (default: 2).
+}
+Note: For model matrices (Z and XZ), no grouping structure is applied regardless of
+what parameters are provided.}
 
-\item{expo_rep}{Exponent parameter for response}
+\item{scale_factor}{Scaling factor for automatic bandwidth calculation (default: 0.5).}
 
-\item{expo_cov}{Exponent parameter for covariates}
+\item{epsilon}{Regularization parameter for ridge regression (default: 1e-3).}
 
-\item{n_perm}{Number of permutations}
+\item{n_perm}{Number of permutations to use for the test (default: 999).}
 
-\item{parallel}{Logical; whether to use parallel processing}
+\item{parallel}{Logical; whether to use parallel processing for permutation testing (default: FALSE).}
 
-\item{n_cores}{Number of cores for parallel processing}
+\item{num_cores}{Number of cores for parallel processing. If NULL, uses all available cores minus one.}
 
-\item{contr.unordered}{Contrast method for unordered factors}
+\item{contrasts}{Contrasts for factor variables (default: NULL, which uses contr.sum for unordered factors
+and contr.poly for ordered factors).}
 
-\item{contr.ordered}{Contrast method for ordered factors}
+\item{returnD}{Logical; whether to return the centered distance matrices (default: FALSE).}
+
+\item{is_distance}{Logical; whether the input Y is already a distance matrix (default: FALSE).}
 }
 \value{
-A list containing test statistics and p-value
+A list containing:
+\item{aov.tab}{ANOVA table with F-statistic, R-squared values, and p-value}
+\item{call}{The function call}
+\item{D_matrices}{The centered distance matrices (if \code{returnD = TRUE})}
+\item{perm.F}{Vector of F-statistics from permutations}
+\item{n_perm}{Number of permutations used}
+\item{model_info}{Information about the model fitted}
 }
 \description{
-An alternative implementation of kernel and distance-based multivariate analysis of variance.
-All the variables will be transformed into kernel or distance matrices.
+Performs a fully distance-based multivariate analysis of variance for testing
+the dependence of a multivariate response Y on predictors X after adjusting for
+covariates Z. Unlike the standard dmanova, this function transforms all variables
+(Y, X, and Z) into distance matrices and uses a ridge regression approach.
+}
+\details{
+This implementation uses a fully distance-based approach where all variables
+(response, predictors, and covariates) are transformed into distance or kernel matrices.
+The test then assesses whether the distance structure of Y depends on that of X
+after accounting for the distance structure of Z.
+
+The formula interface \code{Y ~ X | Z} is used to specify that we want to test the
+dependence of Y on X after adjusting for Z. By default, Z will contain an intercept.
+
+If the input Y is already a distance matrix, it will be used directly (with a sign change
+if needed), bypassing the distance calculation step.
+
+This function differs from the standard dmanova in that it uses ridge regression on
+the distance matrices rather than projection matrices on the original variables, and
+allows for separate distance/kernel configurations for response and covariates.
+}
+\examples{
+# Example 1: Basic usage with multivariate response
+set.seed(123)
+n <- 100
+X1 <- factor(sample(1:3, n, replace = TRUE))
+X2 <- runif(n)
+Z1 <- runif(n)
+Z2 <- factor(sample(1:2, n, replace = TRUE))
+
+# Create multivariate response
+Y <- matrix(rnorm(n*5), ncol = 5)
+Y[,1] <- Y[,1] + as.numeric(X1) + Z1
+Y[,2] <- Y[,2] + X2 + as.numeric(Z2)
+
+# Combine data
+df <- data.frame(X1 = X1, X2 = X2, Z1 = Z1, Z2 = Z2)
+
+# Test dependence of Y on X1 and X2 after adjusting for Z1 and Z2
+# Using default parameter lists
+result1 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df)
+print(result1$aov.tab)
+
+# Example 2: Using different parameters for response and covariates
+result2 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
+                   response_params = list(type = "gaussian", expo = 1),
+                   covariate_params = list(type = "euclidean", expo = 2))
+print(result2$aov.tab)
+
+# Example 3: Using a pre-computed distance matrix
+# Calculate a distance matrix first
+D <- as.matrix(dist(Y))
+# Use the distance matrix directly
+result3 <- dmanova2(D ~ X1 + X2 | Z1 + Z2, data = df, is_distance = TRUE)
+print(result3$aov.tab)
+
+# Example 4: Using group structure for multivariate response
+# Suppose the 5 columns of Y belong to two groups
+group_y <- c(1, 1, 1, 2, 2)
+result4 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
+                   response_params = list(type = "e-dist", group = group_y))
+print(result4$aov.tab)
+
+# Example 5: Using parallel processing for permutation tests
+result5 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
+                   parallel = TRUE, n_perm = 499, num_cores = 2)
+print(result5$aov.tab)
+
+}
+\seealso{
+\code{\link{dmanova}} for the standard distance-based MANOVA approach.
+\code{\link{KDist_matrix}} for details on distance/kernel matrix calculation.
 }

@@ -36,3 +36,32 @@ A distance or kernel matrix.
 \description{
 This function calculates various kernel or distance matrices for input data.
 }
+\examples{
+# Create sample data
+set.seed(123)
+x <- matrix(rnorm(50), ncol = 5)
+
+# Calculate Euclidean distance matrix
+D_euclidean <- KDist_matrix(x, type = "euclidean")
+
+# Calculate Gaussian kernel matrix with automatic bandwidth
+D_gaussian <- KDist_matrix(x, type = "gaussian")
+
+# Calculate Laplacian kernel with custom bandwidth
+D_laplacian <- KDist_matrix(x, type = "laplacian", bw = 0.5)
+
+# Calculate polynomial kernel with degree = 2
+D_poly <- KDist_matrix(x, type = "polynomial", expo = 2)
+
+# Using group structure - columns 1-2 in group 1, columns 3-5 in group 2
+groups <- c(1, 1, 2, 2, 2)
+D_grouped <- KDist_matrix(x, type = "e-dist", group = groups)
+
+# Working with a data frame
+df <- data.frame(a = rnorm(10), b = rnorm(10), c = rnorm(10))
+D_df <- KDist_matrix(df, type = "gaussian", scale_factor = 0.7)
+
+# Working with a vector
+vec <- rnorm(15)
+D_vec <- KDist_matrix(vec)
+}

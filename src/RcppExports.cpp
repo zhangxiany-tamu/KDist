@@ -99,7 +99,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // hsic_cpp
-double hsic_cpp(NumericMatrix x, NumericMatrix y, std::string type, SEXP bw_sexp, double expo, double scale_factor, Nullable<IntegerVector> group_, bool u_center, bool is_distance);
+double hsic_cpp(NumericMatrix x, NumericMatrix y, std::string type, SEXP bw_sexp, double expo, double scale_factor, Nullable<List> group_, bool u_center, bool is_distance);
 RcppExport SEXP _KDist_hsic_cpp(SEXP xSEXP, SEXP ySEXP, SEXP typeSEXP, SEXP bw_sexpSEXP, SEXP expoSEXP, SEXP scale_factorSEXP, SEXP group_SEXP, SEXP u_centerSEXP, SEXP is_distanceSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -110,7 +110,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type bw_sexp(bw_sexpSEXP);
     Rcpp::traits::input_parameter< double >::type expo(expoSEXP);
     Rcpp::traits::input_parameter< double >::type scale_factor(scale_factorSEXP);
-    Rcpp::traits::input_parameter< Nullable<IntegerVector> >::type group_(group_SEXP);
+    Rcpp::traits::input_parameter< Nullable<List> >::type group_(group_SEXP);
     Rcpp::traits::input_parameter< bool >::type u_center(u_centerSEXP);
     Rcpp::traits::input_parameter< bool >::type is_distance(is_distanceSEXP);
     rcpp_result_gen = Rcpp::wrap(hsic_cpp(x, y, type, bw_sexp, expo, scale_factor, group_, u_center, is_distance));
@@ -140,7 +140,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // jhsic_v
-double jhsic_v(Rcpp::List x, double cc, std::string type, SEXP bw_sexp, double expo, double scale_factor, Nullable<IntegerVector> group_);
+double jhsic_v(Rcpp::List x, double cc, std::string type, SEXP bw_sexp, double expo, double scale_factor, Nullable<List> group_);
 RcppExport SEXP _KDist_jhsic_v(SEXP xSEXP, SEXP ccSEXP, SEXP typeSEXP, SEXP bw_sexpSEXP, SEXP expoSEXP, SEXP scale_factorSEXP, SEXP group_SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -151,7 +151,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type bw_sexp(bw_sexpSEXP);
     Rcpp::traits::input_parameter< double >::type expo(expoSEXP);
     Rcpp::traits::input_parameter< double >::type scale_factor(scale_factorSEXP);
-    Rcpp::traits::input_parameter< Nullable<IntegerVector> >::type group_(group_SEXP);
+    Rcpp::traits::input_parameter< Nullable<List> >::type group_(group_SEXP);
     rcpp_result_gen = Rcpp::wrap(jhsic_v(x, cc, type, bw_sexp, expo, scale_factor, group_));
     return rcpp_result_gen;
 END_RCPP
@@ -168,7 +168,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // jhsic_u
-double jhsic_u(Rcpp::List x, double cc, std::string type, SEXP bw_sexp, double expo, bool scale, double scale_factor, Nullable<IntegerVector> group_);
+double jhsic_u(Rcpp::List x, double cc, std::string type, SEXP bw_sexp, double expo, bool scale, double scale_factor, Nullable<List> group_);
 RcppExport SEXP _KDist_jhsic_u(SEXP xSEXP, SEXP ccSEXP, SEXP typeSEXP, SEXP bw_sexpSEXP, SEXP expoSEXP, SEXP scaleSEXP, SEXP scale_factorSEXP, SEXP group_SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -180,7 +180,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type expo(expoSEXP);
     Rcpp::traits::input_parameter< bool >::type scale(scaleSEXP);
     Rcpp::traits::input_parameter< double >::type scale_factor(scale_factorSEXP);
-    Rcpp::traits::input_parameter< Nullable<IntegerVector> >::type group_(group_SEXP);
+    Rcpp::traits::input_parameter< Nullable<List> >::type group_(group_SEXP);
     rcpp_result_gen = Rcpp::wrap(jhsic_u(x, cc, type, bw_sexp, expo, scale, scale_factor, group_));
     return rcpp_result_gen;
 END_RCPP
@@ -196,25 +196,8 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// hohsic
-double hohsic(List x, std::string type, std::string stat_type, SEXP bw_sexp, double expo, double scale_factor, Nullable<IntegerVector> group_);
-RcppExport SEXP _KDist_hohsic(SEXP xSEXP, SEXP typeSEXP, SEXP stat_typeSEXP, SEXP bw_sexpSEXP, SEXP expoSEXP, SEXP scale_factorSEXP, SEXP group_SEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type x(xSEXP);
-    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< std::string >::type stat_type(stat_typeSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type bw_sexp(bw_sexpSEXP);
-    Rcpp::traits::input_parameter< double >::type expo(expoSEXP);
-    Rcpp::traits::input_parameter< double >::type scale_factor(scale_factorSEXP);
-    Rcpp::traits::input_parameter< Nullable<IntegerVector> >::type group_(group_SEXP);
-    rcpp_result_gen = Rcpp::wrap(hohsic(x, type, stat_type, bw_sexp, expo, scale_factor, group_));
-    return rcpp_result_gen;
-END_RCPP
-}
 // dhsic_fast_rcpp
-double dhsic_fast_rcpp(List x_list, String type, SEXP bw, double expo, double scale_factor, Nullable<IntegerVector> group_);
+double dhsic_fast_rcpp(List x_list, String type, SEXP bw, double expo, double scale_factor, Nullable<List> group_);
 RcppExport SEXP _KDist_dhsic_fast_rcpp(SEXP x_listSEXP, SEXP typeSEXP, SEXP bwSEXP, SEXP expoSEXP, SEXP scale_factorSEXP, SEXP group_SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -224,7 +207,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type bw(bwSEXP);
     Rcpp::traits::input_parameter< double >::type expo(expoSEXP);
     Rcpp::traits::input_parameter< double >::type scale_factor(scale_factorSEXP);
-    Rcpp::traits::input_parameter< Nullable<IntegerVector> >::type group_(group_SEXP);
+    Rcpp::traits::input_parameter< Nullable<List> >::type group_(group_SEXP);
     rcpp_result_gen = Rcpp::wrap(dhsic_fast_rcpp(x_list, type, bw, expo, scale_factor, group_));
     return rcpp_result_gen;
 END_RCPP
@@ -356,7 +339,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_KDist_matrix_u_center", (DL_FUNC) &_KDist_matrix_u_center, 1},
     {"_KDist_jhsic_u", (DL_FUNC) &_KDist_jhsic_u, 8},
     {"_KDist_rank_list", (DL_FUNC) &_KDist_rank_list, 1},
-    {"_KDist_hohsic", (DL_FUNC) &_KDist_hohsic, 7},
     {"_KDist_dhsic_fast_rcpp", (DL_FUNC) &_KDist_dhsic_fast_rcpp, 6},
     {"_KDist_mhsic_cpp", (DL_FUNC) &_KDist_mhsic_cpp, 5},
     {"_KDist_teststatg", (DL_FUNC) &_KDist_teststatg, 13},
