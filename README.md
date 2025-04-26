@@ -66,21 +66,22 @@ library(dHSIC)
 library(KDist)
 
 # Compare distance covariance implementation
+set.seed(123)
 n <- 1000
 x <- rnorm(n)
 y <- x + rnorm(n)
 
 # Standard distance covariance
-energy::dcov(x,y)^2  # Result: ~0.236
-KDist::dcov(x,y)     # Result: ~0.236
+energy::dcov(x,y)^2  # Result: ~0.265
+KDist::dcov(x,y)     # Result: ~0.265
 
 # Distance correlation
-energy::dcor(x,y)^2  # Result: ~0.425
-KDist::dcor(x,y)     # Result: ~0.425
+energy::dcor(x,y)^2  # Result: ~0.454
+KDist::dcor(x,y)     # Result: ~0.454
 
 # Unbiased distance covariance
-energy::dcovU(x,y)   # Result: ~0.235
-KDist::dcov(x, y, u_center = TRUE)  # Result: ~0.235
+energy::dcovU(x,y)   # Result: ~0.263
+KDist::dcov(x, y, u_center = TRUE)  # Result: ~0.263
 
 # Multi-variable independence measures
 set.seed(456)
@@ -90,8 +91,8 @@ x2 <- matrix(cos(u), ncol = 1)
 x3 <- matrix(sin(u) * cos(u), ncol = 1)
 
 # d-variable HSIC
-dHSIC::dhsic(list(x1,x2,x3))      # Result: ~0.0545
-KDist::dhsic(list(x1, x2, x3), type = "gaussian")  # Result: ~0.0545
+dHSIC::dhsic(list(x1,x2,x3))      # Result: ~0.0538
+KDist::dhsic(list(x1, x2, x3), type = "gaussian")  # Result: ~0.0538
 ```
 
 ### Speed Comparison
