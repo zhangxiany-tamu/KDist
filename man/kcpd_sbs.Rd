@@ -97,6 +97,9 @@ The algorithm works by:
 
 This method is more computationally efficient than exhaustive search approaches while
 maintaining statistical power and accuracy, especially in high-dimensional settings.
+
+This version includes Bonferroni correction to control the family-wise error rate
+when testing multiple intervals.
 }
 \examples{
 # Example 1: High-dimensional data with change in distribution
@@ -116,7 +119,7 @@ X2 <- matrix(rexp(n = (n-cp) * p) - 1, nrow = (n-cp), ncol = p)
 X <- rbind(X1, X2)
 
 # Detect change points
-result <- kcpd_sbs(X, type = "e-dist", method = "permutation")
+result <- kcpd_sbs(X, type = "e-dist")
 
 print(result$locations)  # Should be close to 50
 print(result$pvalues)    # Should be < 0.05
@@ -149,7 +152,7 @@ X3 <- X3 \%*\% chol(Sigma)  # Apply covariance structure
 X <- rbind(X1, X2, X3)
 
 # Detect multiple change points using e-dist (efficient for high-dimensional data)
-result <- kcpd_sbs(X, type = "e-dist", method = "asymptotic", decay = 1.5)
+result <- kcpd_sbs(X, type = "e-dist", decay = 1.5)
 print(result$locations)  # Should be close to 40 and 80
 print(result$pvalues)
 print(table(result$cluster))
@@ -164,20 +167,4 @@ if(length(result$locations) > 0) {
   abline(v = result$locations, lty = 2, col = "red")
 }
 
-}
-\references{
-Kovács, S., Bühlmann, P., Li, H., & Munk, A. (2023). Seeded binary segmentation: a
-general methodology for fast and optimal changepoint detection. \emph{Biometrika}, \emph{110}(1), 249-256.
-
-Chakraborty, S., & Zhang, X. (2021). A New Framework for Distance and Kernel-based Metrics
-in High-dimension. \emph{Electronic Journal of Statistics}, 15, 5455-5522.
-
-Chakraborty, S., & Zhang, X. (2021). High-dimensional Change-point Detection Using
-Generalized Homogeneity Metrics. arXiv:2105.08976.
-}
-\seealso{
-\code{\link{kcpd_single}} for single change point detection
-\code{\link{get_seeded_intervals}} for generating the seeded intervals
-\code{\link{adjustedRandIndex}} for evaluating change point detection results
-\code{\link{KDist_matrix}} for details on distance/kernel matrix calculation
 }

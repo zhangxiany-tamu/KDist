@@ -215,6 +215,9 @@ kcpd_single <- function(data, type = "e-dist", bw = NULL, expo = 1, scale_factor
 #' This method is more computationally efficient than exhaustive search approaches while
 #' maintaining statistical power and accuracy, especially in high-dimensional settings.
 #'
+#' This version includes Bonferroni correction to control the family-wise error rate
+#' when testing multiple intervals.
+#'
 #' @param data A matrix or data frame with rows representing time points (observations) and
 #'        columns representing variables or features.
 #' @param type Type of distance or kernel to use (default: "e-dist"). Options include:
@@ -269,7 +272,7 @@ kcpd_single <- function(data, type = "e-dist", bw = NULL, expo = 1, scale_factor
 #' X <- rbind(X1, X2)
 #'
 #' # Detect change points
-#' result <- kcpd_sbs(X, type = "e-dist", method = "permutation")
+#' result <- kcpd_sbs(X, type = "e-dist")
 #'
 #' print(result$locations)  # Should be close to 50
 #' print(result$pvalues)    # Should be < 0.05
@@ -302,7 +305,7 @@ kcpd_single <- function(data, type = "e-dist", bw = NULL, expo = 1, scale_factor
 #' X <- rbind(X1, X2, X3)
 #'
 #' # Detect multiple change points using e-dist (efficient for high-dimensional data)
-#' result <- kcpd_sbs(X, type = "e-dist", method = "asymptotic", decay = 1.5)
+#' result <- kcpd_sbs(X, type = "e-dist", decay = 1.5)
 #' print(result$locations)  # Should be close to 40 and 80
 #' print(result$pvalues)
 #' print(table(result$cluster))
@@ -317,27 +320,11 @@ kcpd_single <- function(data, type = "e-dist", bw = NULL, expo = 1, scale_factor
 #'   abline(v = result$locations, lty = 2, col = "red")
 #' }
 #'
-#' @references
-#' Kovács, S., Bühlmann, P., Li, H., & Munk, A. (2023). Seeded binary segmentation: a
-#' general methodology for fast and optimal changepoint detection. *Biometrika*, *110*(1), 249-256.
-#'
-#' Chakraborty, S., & Zhang, X. (2021). A New Framework for Distance and Kernel-based Metrics
-#' in High-dimension. \emph{Electronic Journal of Statistics}, 15, 5455-5522.
-#'
-#' Chakraborty, S., & Zhang, X. (2021). High-dimensional Change-point Detection Using
-#' Generalized Homogeneity Metrics. arXiv:2105.08976.
-#'
-#' @seealso
-#' \code{\link{kcpd_single}} for single change point detection
-#' \code{\link{get_seeded_intervals}} for generating the seeded intervals
-#' \code{\link{adjustedRandIndex}} for evaluating change point detection results
-#' \code{\link{KDist_matrix}} for details on distance/kernel matrix calculation
-#'
 #' @importFrom parallel mclapply detectCores
 #' @export
 kcpd_sbs <- function(data, type = "e-dist", bw = NULL, expo = 1, scale_factor = 0.5,
-                     group = NULL, B = 199, alpha = 0.05, seeds = NULL,
-                     method = "asymptotic", decay = sqrt(2), unique_int = TRUE, bound = 20, num_cores = 1) {
+         group = NULL, B = 199, alpha = 0.05, seeds = NULL,
+         method = "asymptotic", decay = sqrt(2), unique_int = TRUE, bound = 20, num_cores = 1) {
 
   # Check if bound is large enough
   if (bound <= 5) {
@@ -412,8 +399,17 @@ kcpd_sbs <- function(data, type = "e-dist", bw = NULL, expo = 1, scale_factor = 
   change_points <- numeric(0)
   p_values <- numeric(0)
 
-  # Find all significant intervals
-  significant <- interval_results[interval_results[, "pvalue"] < alpha & !is.na(interval_results[, "cp"]), , drop = FALSE]
+  # Calculate the number of valid intervals (non-NA change points)
+  valid_intervals <- sum(!is.na(interval_results[, "cp"]))
+
+  # Apply Bonferroni correction: divide alpha by the number of valid intervals
+  if(valid_intervals > 0) {
+    alpha_corrected <- alpha / valid_intervals
+    significant <- interval_results[interval_results[, "pvalue"] < alpha_corrected &
+                                      !is.na(interval_results[, "cp"]), , drop = FALSE]
+  } else {
+    significant <- interval_results[FALSE, , drop = FALSE]  # Empty result if no valid intervals
+  }
 
   # If no significant change points, return empty result
   if (nrow(significant) == 0) {
