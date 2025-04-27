@@ -20,8 +20,8 @@ dmanova2(
 )
 }
 \arguments{
-\item{formula}{A formula of the form Y ~ X | Z, where Y is the response, X contains
-the predictors of interest, and Z contains the covariates to adjust for.}
+\item{formula}{A formula of the form Y ~ X | Z or Y ~ X, where Y is the response, X contains
+the predictors of interest, and Z contains the covariates to adjust for (if specified).}
 
 \item{data}{An optional data frame containing the variables in the formula.}
 
@@ -85,11 +85,16 @@ This implementation uses a fully distance-based approach where all variables
 The test then assesses whether the distance structure of Y depends on that of X
 after accounting for the distance structure of Z.
 
-The formula interface \code{Y ~ X | Z} is used to specify that we want to test the
-dependence of Y on X after adjusting for Z. By default, Z will contain an intercept.
+The formula interface can be specified in two ways:
+\itemize{
+\item \code{Y ~ X | Z} - Test the dependence of Y on X after adjusting for Z.
+\item \code{Y ~ X} - Test the dependence of Y on X with only an intercept term as covariate.
+}
 
-If the input Y is already a distance matrix, it will be used directly (with a sign change
-if needed), bypassing the distance calculation step.
+By default, Z will contain an intercept. If Z is not specified in the formula (i.e., using
+\code{Y ~ X} format), then Z will be set to an intercept-only model.
+
+If the input Y is already a distance matrix, it will be used directly, bypassing the distance calculation step.
 
 This function differs from the standard dmanova in that it uses ridge regression on
 the distance matrices rather than projection matrices on the original variables, and
@@ -117,30 +122,35 @@ df <- data.frame(X1 = X1, X2 = X2, Z1 = Z1, Z2 = Z2)
 result1 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df)
 print(result1$aov.tab)
 
-# Example 2: Using different parameters for response and covariates
-result2 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
-                   response_params = list(type = "gaussian", expo = 1),
-                   covariate_params = list(type = "euclidean", expo = 2))
+# Example 2: Using a simplified formula without covariates
+# (This will use an intercept-only model for Z)
+result2 <- dmanova2(Y ~ X1 + X2, data = df)
 print(result2$aov.tab)
 
-# Example 3: Using a pre-computed distance matrix
+# Example 3: Using different parameters for response and covariates
+result3 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
+                   response_params = list(type = "gaussian", expo = 1),
+                   covariate_params = list(type = "euclidean", expo = 2))
+print(result3$aov.tab)
+
+# Example 4: Using a pre-computed distance matrix
 # Calculate a distance matrix first
 D <- as.matrix(dist(Y))
 # Use the distance matrix directly
-result3 <- dmanova2(D ~ X1 + X2 | Z1 + Z2, data = df, is_distance = TRUE)
-print(result3$aov.tab)
-
-# Example 4: Using group structure for multivariate response
-# Suppose the 5 columns of Y belong to two groups
-group_y <- c(1, 1, 1, 2, 2)
-result4 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
-                   response_params = list(type = "e-dist", group = group_y))
+result4 <- dmanova2(D ~ X1 + X2 | Z1 + Z2, data = df, is_distance = TRUE)
 print(result4$aov.tab)
 
-# Example 5: Using parallel processing for permutation tests
+# Example 5: Using group structure for multivariate response
+# Suppose the 5 columns of Y belong to two groups
+group_y <- c(1, 1, 1, 2, 2)
 result5 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
-                   parallel = TRUE, n_perm = 499, num_cores = 2)
+                   response_params = list(type = "e-dist", group = group_y))
 print(result5$aov.tab)
+
+# Example 6: Using parallel processing for permutation tests
+result6 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
+                   parallel = TRUE, n_perm = 499, num_cores = 2)
+print(result6$aov.tab)
 
 }
 \seealso{

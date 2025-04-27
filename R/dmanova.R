@@ -11,18 +11,23 @@
 #' accounting for covariates. The approach is based on partitioning the total sum of
 #' squares of the centered distance matrix.
 #'
-#' The formula interface \code{Y ~ X | Z} is used to specify that we want to test the
-#' dependence of Y on X after adjusting for Z. By default, Z will contain an intercept.
+#' The formula interface can be specified in two ways:
+#' \itemize{
+#'   \item \code{Y ~ X | Z} - Test the dependence of Y on X after adjusting for Z.
+#'   \item \code{Y ~ X} - Test the dependence of Y on X with only an intercept term as covariate.
+#' }
 #'
-#' If the input Y is already a distance matrix, it will be used directly (with a sign change
-#' if needed), bypassing the distance calculation step.
+#' By default, Z will contain an intercept. If Z is not specified in the formula (i.e., using
+#' \code{Y ~ X} format), then Z will be set to an intercept-only model.
+#'
+#' If the input Y is already a distance matrix, it will be used directly, bypassing the distance calculation step.
 #'
 #' When \code{method = "asymptotic"}, the function uses an asymptotic approximation to
 #' calculate the p-value. When \code{method = "permutation"}, a permutation procedure
 #' is used to obtain the p-value, which is more robust but computationally more intensive.
 #'
-#' @param formula A formula of the form Y ~ X | Z, where Y is the response, X contains
-#'        the predictors of interest, and Z contains the covariates to adjust for.
+#' @param formula A formula of the form Y ~ X | Z or Y ~ X, where Y is the response, X contains
+#'        the predictors of interest, and Z contains the covariates to adjust for (if specified).
 #' @param data An optional data frame containing the variables in the formula.
 #' @param type Type of distance or kernel to use for the response (default: "euclidean").
 #'        Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist",
@@ -74,12 +79,17 @@
 #' result1 <- dmanova(Y ~ X1 + X2 | Z1 + Z2, data = dataset)
 #' print(result1$aov.tab)
 #'
-#' # Example 2: Using a pre-computed distance matrix
+#' # Example 2: Using a simplified formula without covariates
+#' # (This will use an intercept-only model for Z)
+#' result2 <- dmanova(Y ~ X1 + X2, data = dataset)
+#' print(result2$aov.tab)
+#'
+#' # Example 3: Using a pre-computed distance matrix
 #' # Calculate a distance matrix first
 #' D <- as.matrix(dist(Y))
 #' # Use the distance matrix directly
-#' result2 <- dmanova(D ~ X1 + X2 | Z1 + Z2, data = dataset, is_distance = TRUE)
-#' print(result2$aov.tab)
+#' result3 <- dmanova(D ~ X1 + X2 | Z1 + Z2, data = dataset, is_distance = TRUE)
+#' print(result3$aov.tab)
 #'
 #' @references
 #' Chen, J., & Zhang, X. (2022). D-MANOVA: Fast Distance-based Multivariate Analysis
@@ -110,19 +120,24 @@ dmanova <- function(formula, data = NULL, type = "euclidean", bw = NULL, expo = 
   options(contrasts = c(contrasts$unordered, contrasts$ordered))
 
   # Parse the formula
-  # Check if the formula contains the | operator
   formula_str <- as.character(formula)
-  if (length(formula_str) < 3 || !grepl("\\|", formula_str[3])) {
-    stop("Formula must be of the form 'Y ~ X | Z' to test dependence of Y on X after adjusting for Z")
-  }
+
+  # Check if the formula contains the | operator
+  has_covariates <- length(formula_str) >= 3 && grepl("\\|", formula_str[3])
 
   # Extract parts of the formula
   lhs <- formula[[2]]  # Y (response)
 
-  # Split the right side at the | symbol
-  rhs_parts <- strsplit(formula_str[3], "\\|")[[1]]
-  X_part <- trimws(rhs_parts[1])
-  Z_part <- trimws(rhs_parts[2])
+  if (has_covariates) {
+    # Split the right side at the | symbol
+    rhs_parts <- strsplit(formula_str[3], "\\|")[[1]]
+    X_part <- trimws(rhs_parts[1])
+    Z_part <- trimws(rhs_parts[2])
+  } else {
+    # If no | symbol, all the right side is X, and Z is just an intercept
+    X_part <- formula_str[3]
+    Z_part <- "1"  # Intercept only
+  }
 
   # Evaluate response
   Y <- eval(lhs, data, parent.frame())
@@ -313,18 +328,23 @@ dmanova <- function(formula, data = NULL, type = "euclidean", bw = NULL, expo = 
 #' The test then assesses whether the distance structure of Y depends on that of X
 #' after accounting for the distance structure of Z.
 #'
-#' The formula interface \code{Y ~ X | Z} is used to specify that we want to test the
-#' dependence of Y on X after adjusting for Z. By default, Z will contain an intercept.
+#' The formula interface can be specified in two ways:
+#' \itemize{
+#'   \item \code{Y ~ X | Z} - Test the dependence of Y on X after adjusting for Z.
+#'   \item \code{Y ~ X} - Test the dependence of Y on X with only an intercept term as covariate.
+#' }
 #'
-#' If the input Y is already a distance matrix, it will be used directly (with a sign change
-#' if needed), bypassing the distance calculation step.
+#' By default, Z will contain an intercept. If Z is not specified in the formula (i.e., using
+#' \code{Y ~ X} format), then Z will be set to an intercept-only model.
+#'
+#' If the input Y is already a distance matrix, it will be used directly, bypassing the distance calculation step.
 #'
 #' This function differs from the standard dmanova in that it uses ridge regression on
 #' the distance matrices rather than projection matrices on the original variables, and
 #' allows for separate distance/kernel configurations for response and covariates.
 #'
-#' @param formula A formula of the form Y ~ X | Z, where Y is the response, X contains
-#'        the predictors of interest, and Z contains the covariates to adjust for.
+#' @param formula A formula of the form Y ~ X | Z or Y ~ X, where Y is the response, X contains
+#'        the predictors of interest, and Z contains the covariates to adjust for (if specified).
 #' @param data An optional data frame containing the variables in the formula.
 #' @param response_params A list of parameters for calculating the distance/kernel matrix of the response:
 #'        \itemize{
@@ -386,30 +406,35 @@ dmanova <- function(formula, data = NULL, type = "euclidean", bw = NULL, expo = 
 #' result1 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df)
 #' print(result1$aov.tab)
 #'
-#' # Example 2: Using different parameters for response and covariates
-#' result2 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
-#'                    response_params = list(type = "gaussian", expo = 1),
-#'                    covariate_params = list(type = "euclidean", expo = 2))
+#' # Example 2: Using a simplified formula without covariates
+#' # (This will use an intercept-only model for Z)
+#' result2 <- dmanova2(Y ~ X1 + X2, data = df)
 #' print(result2$aov.tab)
 #'
-#' # Example 3: Using a pre-computed distance matrix
+#' # Example 3: Using different parameters for response and covariates
+#' result3 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
+#'                    response_params = list(type = "gaussian", expo = 1),
+#'                    covariate_params = list(type = "euclidean", expo = 2))
+#' print(result3$aov.tab)
+#'
+#' # Example 4: Using a pre-computed distance matrix
 #' # Calculate a distance matrix first
 #' D <- as.matrix(dist(Y))
 #' # Use the distance matrix directly
-#' result3 <- dmanova2(D ~ X1 + X2 | Z1 + Z2, data = df, is_distance = TRUE)
-#' print(result3$aov.tab)
-#'
-#' # Example 4: Using group structure for multivariate response
-#' # Suppose the 5 columns of Y belong to two groups
-#' group_y <- c(1, 1, 1, 2, 2)
-#' result4 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
-#'                    response_params = list(type = "e-dist", group = group_y))
+#' result4 <- dmanova2(D ~ X1 + X2 | Z1 + Z2, data = df, is_distance = TRUE)
 #' print(result4$aov.tab)
 #'
-#' # Example 5: Using parallel processing for permutation tests
+#' # Example 5: Using group structure for multivariate response
+#' # Suppose the 5 columns of Y belong to two groups
+#' group_y <- c(1, 1, 1, 2, 2)
 #' result5 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
-#'                    parallel = TRUE, n_perm = 499, num_cores = 2)
+#'                    response_params = list(type = "e-dist", group = group_y))
 #' print(result5$aov.tab)
+#'
+#' # Example 6: Using parallel processing for permutation tests
+#' result6 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
+#'                    parallel = TRUE, n_perm = 499, num_cores = 2)
+#' print(result6$aov.tab)
 #'
 #' @seealso
 #' \code{\link{dmanova}} for the standard distance-based MANOVA approach.
@@ -444,24 +469,29 @@ dmanova2 <- function(formula, data = NULL,
   options(contrasts = c(contrasts$unordered, contrasts$ordered))
 
   # Parse the formula
-  # Check if the formula contains the | operator
   formula_str <- as.character(formula)
-  if (length(formula_str) < 3 || !grepl("\\|", formula_str[3])) {
-    stop("Formula must be of the form 'Y ~ X | Z' to test dependence of Y on X after adjusting for Z")
-  }
+
+  # Check if the formula contains the | operator
+  has_covariates <- length(formula_str) >= 3 && grepl("\\|", formula_str[3])
 
   # Extract parts of the formula
   lhs <- formula[[2]]  # Y (response)
 
-  # Split the right side at the | symbol
-  rhs_parts <- strsplit(formula_str[3], "\\|")[[1]]
-  X_part <- trimws(rhs_parts[1])
-  Z_part <- trimws(rhs_parts[2])
+  if (has_covariates) {
+    # Split the right side at the | symbol
+    rhs_parts <- strsplit(formula_str[3], "\\|")[[1]]
+    X_part <- trimws(rhs_parts[1])
+    Z_part <- trimws(rhs_parts[2])
+  } else {
+    # If no | symbol, all the right side is X, and Z is just an intercept
+    X_part <- formula_str[3]
+    Z_part <- "1"  # Intercept only
+  }
 
   # Evaluate response
   Y <- eval(lhs, data, parent.frame())
 
-  # Create formulas with intercept (we'll remove it later if needed)
+  # Create formulas with intercept
   Z_formula <- as.formula(paste("~", Z_part))
   X_formula <- as.formula(paste("~", X_part))
   full_formula <- as.formula(paste("~", paste(c(X_part, Z_part), collapse = "+")))

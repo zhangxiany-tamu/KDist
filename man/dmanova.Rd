@@ -22,8 +22,8 @@ dmanova(
 )
 }
 \arguments{
-\item{formula}{A formula of the form Y ~ X | Z, where Y is the response, X contains
-the predictors of interest, and Z contains the covariates to adjust for.}
+\item{formula}{A formula of the form Y ~ X | Z or Y ~ X, where Y is the response, X contains
+the predictors of interest, and Z contains the covariates to adjust for (if specified).}
 
 \item{data}{An optional data frame containing the variables in the formula.}
 
@@ -79,11 +79,16 @@ then tests whether this distance structure depends on a set of predictors after
 accounting for covariates. The approach is based on partitioning the total sum of
 squares of the centered distance matrix.
 
-The formula interface \code{Y ~ X | Z} is used to specify that we want to test the
-dependence of Y on X after adjusting for Z. By default, Z will contain an intercept.
+The formula interface can be specified in two ways:
+\itemize{
+\item \code{Y ~ X | Z} - Test the dependence of Y on X after adjusting for Z.
+\item \code{Y ~ X} - Test the dependence of Y on X with only an intercept term as covariate.
+}
 
-If the input Y is already a distance matrix, it will be used directly (with a sign change
-if needed), bypassing the distance calculation step.
+By default, Z will contain an intercept. If Z is not specified in the formula (i.e., using
+\code{Y ~ X} format), then Z will be set to an intercept-only model.
+
+If the input Y is already a distance matrix, it will be used directly, bypassing the distance calculation step.
 
 When \code{method = "asymptotic"}, the function uses an asymptotic approximation to
 calculate the p-value. When \code{method = "permutation"}, a permutation procedure
@@ -110,12 +115,17 @@ dataset <- data.frame(X1 = X1, X2 = X2, Z1 = Z1, Z2 = Z2)
 result1 <- dmanova(Y ~ X1 + X2 | Z1 + Z2, data = dataset)
 print(result1$aov.tab)
 
-# Example 2: Using a pre-computed distance matrix
+# Example 2: Using a simplified formula without covariates
+# (This will use an intercept-only model for Z)
+result2 <- dmanova(Y ~ X1 + X2, data = dataset)
+print(result2$aov.tab)
+
+# Example 3: Using a pre-computed distance matrix
 # Calculate a distance matrix first
 D <- as.matrix(dist(Y))
 # Use the distance matrix directly
-result2 <- dmanova(D ~ X1 + X2 | Z1 + Z2, data = dataset, is_distance = TRUE)
-print(result2$aov.tab)
+result3 <- dmanova(D ~ X1 + X2 | Z1 + Z2, data = dataset, is_distance = TRUE)
+print(result3$aov.tab)
 
 }
 \references{

@@ -222,7 +222,7 @@ print(result)
 
 ### Multivariate Analysis
 - `dmanova()`: Distance-based MANOVA
-- `dmanova2()`: Alternative implementation of distance-based MANOVA
+- `dmanova2()`: Fully distance-based MANOVA
 
 ### Conditional Testing
 - `kcid()`: Kernel conditional independence test
