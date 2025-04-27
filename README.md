@@ -232,6 +232,7 @@ print(result)
 ### Change-point Detection
 - `kcpd_single()`: Single change-point detection
 - `kcpd_sbs()`: Multiple change-point detection with seeded binary segmentation
+- `kcpd_wbs()`: Multiple change-point detection with wild binary segmentation
 - `get_seeded_intervals()`: Generate intervals for binary segmentation
 
 ### Utilities

@@ -780,3 +780,345 @@ adjustedRandIndex <- function(x, y)
   ARI <- (a - (a + b) * (a + c)/(a + b + c + d))/((a + b + a + c)/2 - (a + b) * (a + c)/(a + b + c + d))
   return(ARI)
 }
+
+#' Wild Binary Segmentation for Multiple Change Point Detection using Kernel Metrics
+#'
+#' @description
+#' Detects multiple change points in time series or sequential data using the Wild Binary Segmentation
+#' (WBS) method combined with kernel-based metrics. This approach is particularly effective for
+#' high-dimensional data and can detect various types of changes in distribution beyond just mean shifts.
+#'
+#' @details
+#' This function implements a multiple change point detection approach that combines:
+#' 1. The Wild Binary Segmentation (WBS) methodology from Fryzlewicz (2014), which uses
+#'    a random set of intervals at multiple scales to search for change points
+#' 2. The kernel-based testing framework from Chakraborty & Zhang (2021), which enables
+#'    detection of general distributional changes even in high-dimensional settings
+#'
+#' The algorithm works by:
+#' 1. Randomly selecting M subintervals of the data
+#' 2. Applying the kernel-based test statistic to each interval independently
+#' 3. Identifying the interval with the maximum test statistic
+#' 4. If significant, recursively applying the procedure to the segments before and after
+#'    the detected change point
+#' 5. Returning the final set of change points with their p-values and segment assignments
+#'
+#' @param data A matrix or data frame with rows representing time points (observations) and
+#'        columns representing variables or features.
+#' @param type Type of distance or kernel to use (default: "e-dist"). Options include:
+#'        \itemize{
+#'          \item "euclidean": Euclidean distance
+#'          \item "gaussian": Gaussian kernel
+#'          \item "laplacian": Laplacian kernel
+#'          \item "polynomial": Polynomial kernel
+#'          \item "e-dist": Euclidean-based aggregated distance (for high-dimensional data)
+#'          \item "g-dist": Gaussian kernel-based aggregated distance
+#'          \item "l-dist": Laplacian kernel-based aggregated distance
+#'        }
+#' @param bw Bandwidth parameter for kernel calculations. If NULL (default), it will be automatically determined.
+#' @param expo Exponent parameter for distance calculation (default: 1).
+#' @param scale_factor Scaling factor for automatic bandwidth calculation (default: 0.5).
+#' @param group Optional vector specifying group membership for each variable/column.
+#'        Used for group-wise distance calculations in "e-dist", "g-dist", or "l-dist".
+#' @param M Number of random intervals to consider (default: 50).
+#'        Higher values increase computational cost but may improve accuracy.
+#' @param B Number of permutations for p-value calculation (default: 299).
+#' @param alpha Significance level for determining whether a change point is significant (default: 0.05).
+#' @param seeds Random seed for reproducibility. If NULL, no seed is set.
+#' @param num_cores Number of cores for parallel processing (default: 1).
+#'        If NULL, will use one less than the available number of cores.
+#'
+#' @return A list containing:
+#'   \item{locations}{A vector of detected change point locations (indices)}
+#'   \item{pvalues}{A vector of p-values corresponding to each detected change point}
+#'   \item{cluster}{A vector of cluster assignments for each observation, where each segment
+#'                  between change points is assigned a unique integer}
+#'
+#' @examples
+#' # Example: High-dimensional data with multiple change points
+#' set.seed(123)
+#' n <- 150  # Total sample size
+#' p <- 200  # Number of dimensions (high-dimensional setting)
+#'
+#' # Generate high-dimensional data with two change points at t=50 and t=100
+#' X1 <- matrix(rnorm(50 * p), nrow = 50, ncol = p)                # First segment
+#' X2 <- matrix(rnorm(50 * p, mean = 0.5), nrow = 50, ncol = p)    # Second segment
+#' X3 <- matrix(rnorm(50 * p, mean = 0), nrow = 50, ncol = p)      # Third segment
+#'
+#' # Combine data
+#' X <- rbind(X1, X2, X3)
+#'
+#' # Detect change points using WBS
+#' result <- kcpd_wbs(X, type = "e-dist", M = 50)
+#'
+#' print(result$locations)  # Should be close to 50 and 100
+#' print(result$pvalues)    # Should be < 0.05
+#' print(table(result$cluster))  # Should show 3 segments
+#'
+#' @references
+#' Fryzlewicz, P. (2014). Wild binary segmentation for multiple change-point detection.
+#' *The Annals of Statistics*, 42(6), 2243-2281.
+#'
+#' Chakraborty, S., & Zhang, X. (2021). High-dimensional Change-point Detection Using
+#' Generalized Homogeneity Metrics. arXiv:2105.08976.
+#'
+#' @seealso
+#' \code{\link{kcpd_single}} for single change point detection
+#' \code{\link{kcpd_sbs}} for change point detection using Seeded Binary Segmentation
+#' \code{\link{adjustedRandIndex}} for evaluating change point detection results
+#'
+#' @importFrom parallel mclapply detectCores
+#' @export
+kcpd_wbs <- function(data, type = "e-dist", bw = NULL, expo = 1, scale_factor = 0.5,
+                     group = NULL, M = 50, B = 299, alpha = 0.05, seeds = NULL, num_cores = 1) {
+
+  # Input validation
+  if (!is.matrix(data) && !is.data.frame(data)) {
+    stop("Input data must be a matrix or data frame")
+  }
+
+  # Set seed for reproducibility if provided
+  if (!is.null(seeds)) {
+    set.seed(seeds)
+  }
+
+  # Get data dimensions
+  n <- nrow(data)
+
+  # Calculate the distance matrix for the original data
+  full_dist <- KDist_matrix(data = data, type = type, bw = bw, expo = expo,
+                            scale_factor = scale_factor, group = group)
+
+  # Set up parallel processing
+  if (is.null(num_cores)) {
+    num_cores <- detectCores() - 1
+    num_cores <- max(1, num_cores)  # Ensure at least one core
+  }
+
+  # Run WBS algorithm with the helper functions
+  result <- .wbs_process_intervals(full_dist = full_dist, type = type, s = 1, e = n,
+                                   M = M, B = B, alpha = alpha, num_cores = num_cores)
+
+  # Process results
+  if (is.null(result$cp)) {
+    # No change points detected
+    return(list(
+      locations = numeric(0),
+      pvalues = numeric(0),
+      cluster = rep(1, n)
+    ))
+  } else {
+    # Change points detected
+    cp_locations <- result$cp
+    cp_pvalues <- result$pvals
+
+    # Create cluster labels
+    clusters <- numeric(n)
+    prev_cp <- 0
+
+    for (i in 1:(length(cp_locations) + 1)) {
+      current_cp <- if (i <= length(cp_locations)) cp_locations[i] else n
+      clusters[(prev_cp + 1):current_cp] <- i
+      prev_cp <- current_cp
+    }
+
+    # Return results
+    return(list(
+      locations = cp_locations,
+      pvalues = cp_pvalues,
+      cluster = clusters
+    ))
+  }
+}
+
+#' Generate random intervals and compute test statistics
+#'
+#' @param full_dist Full distance matrix
+#' @param type Type of distance/kernel
+#' @param start Start index of overall interval
+#' @param end End index of overall interval
+#' @param M Number of random intervals to generate
+#' @param num_cores Number of cores for parallel processing
+#'
+#' @return Matrix with 4 rows and M columns (start, end, change point, test statistic)
+#' @keywords internal
+.generate_random_intervals <- function(full_dist, type, start, end, M, num_cores = NULL) {
+  # returns a matrix with s_m, e_m, cp and stat_values for m=1:M
+  # Check if valid range exists
+  if (start > end - 7) {
+    stop("Invalid range: 'start' must be <= 'end - 7'")
+  }
+
+  # Determine number of cores
+  if (is.null(num_cores)) {
+    num_cores <- detectCores() - 1  # Leave one core free for system processes
+    num_cores <- max(1, num_cores)  # Ensure at least one core
+  }
+
+  # Generate s_m values
+  if (start == end - 7) {
+    s_m_values <- rep(start, M)
+  } else {
+    s_m_values <- sample(start:(end-7), M, replace = TRUE)
+  }
+
+  # Function to process each m in parallel
+  process_m <- function(m) {
+    s_m <- s_m_values[m]
+
+    if (s_m + 7 == end) {
+      e_m <- s_m + 7
+    } else {
+      e_m <- sample((s_m+7):end, 1)
+    }
+
+    b_range <- s_m:e_m
+    result <- .stat_recur(full_dist[b_range, b_range], type = type)
+
+    # Return the results for this m
+    c(s_m, e_m, result$change_point + s_m - 1, result$statistic)
+  }
+
+  # Process all m in parallel using mclapply
+  results <- mclapply(1:M, process_m, mc.cores = num_cores)
+
+  # Convert results list to matrix
+  mat <- matrix(unlist(results), nrow = 4, ncol = M)
+
+  return(mat)
+}
+
+#' Remove duplicate columns from a matrix
+#'
+#' @param M Input matrix
+#'
+#' @return Matrix with duplicate columns removed
+#' @keywords internal
+.remove_duplicates <- function(M) {
+  # Find which columns are not duplicates
+  # duplicated() returns TRUE for duplicates, so we negate with !
+  unique_cols_idx <- which(!duplicated(t(M), MARGIN = 1))
+
+  # Return only the unique columns
+  return(M[, unique_cols_idx, drop = FALSE])
+}
+
+#' Test for a change point within a single interval
+#'
+#' @param full_dist Full distance matrix
+#' @param type Type of distance/kernel
+#' @param start Start index of overall interval
+#' @param end End index of overall interval
+#' @param M Number of random intervals to generate
+#' @param B Number of permutations for p-value calculation
+#' @param num_cores Number of cores for parallel processing
+#'
+#' @return List with detected change point and p-value
+#' @keywords internal
+.wbs_test_interval <- function(full_dist, type, start, end, M, B, num_cores = 1) {
+  # First part: Find the global maximizer
+  mat <- .generate_random_intervals(full_dist = full_dist, type = type, start = start, end = end, M = M, num_cores = num_cores)
+  mat <- .remove_duplicates(mat)
+  m_0 <- which.max(mat[4, ])   ## global maximizer m_0 among 1:M
+  b_0 <- mat[3, m_0]           ## global maximizer b_0
+  stat <- mat[4, m_0]          ## maximized value of the test statistic for m=m_0 and b=b_0
+
+  # Determine number of cores for parallel processing
+  if (is.null(num_cores)) {
+    num_cores <- detectCores() - 1  # Leave one core free for system processes
+    num_cores <- max(1, num_cores)  # Ensure at least one core
+  }
+
+  # Prepare permutation testing
+  run_permutation <- function(perm_index) {
+    # Create permuted distance matrix
+    perm_indices <- sample(start:end)
+    perm_dist <- full_dist
+    perm_dist[start:end, start:end] <- full_dist[perm_indices, perm_indices]
+
+    # Calculate test statistics for all columns of mat in vectorized way
+    t_perm <- numeric(dim(mat)[2])
+    for (j in 1:dim(mat)[2]) {
+      b_range <- mat[1,j]:mat[2,j]
+      result <- .stat_recur(perm_dist[b_range, b_range], type = type)
+      t_perm[j] <- result$statistic
+    }
+
+    # Return the maximum test statistic for this permutation
+    return(max(t_perm))
+  }
+
+  # Run permutations in parallel
+  stat_vec <- mclapply(1:B, function(i) run_permutation(i), mc.cores = num_cores)
+
+  # Convert list result from mclapply to vector
+  stat_vec <- unlist(stat_vec)
+
+  # Calculate p-value
+  pval <- (1 + sum(stat_vec > stat)) / (1 + B)
+
+  return(list(b_0 = b_0, pval = pval))
+}
+
+#' Process intervals recursively to detect change points
+#'
+#' @param full_dist Full distance matrix
+#' @param type Type of distance/kernel
+#' @param s Start index of overall interval
+#' @param e End index of overall interval
+#' @param M Number of random intervals to generate
+#' @param B Number of permutations for p-value calculation
+#' @param alpha Significance level
+#' @param num_cores Number of cores for parallel processing
+#'
+#' @return List with detected change points and p-values
+#' @keywords internal
+.wbs_process_intervals <- function(full_dist, type, s, e, M, B, alpha, num_cores = NULL) {
+  # Initialize tracking variables
+  segment_vec <- c(s, e)
+  cp_vec <- NULL
+  pvals <- NULL
+  result <- list()
+
+  # Process segments until none remain
+  while (length(segment_vec) > 0) {
+    # Extract current segment boundaries
+    s1 <- segment_vec[1]
+    e1 <- segment_vec[2]
+
+    # Only process segments of sufficient length (>= 7)
+    if (e1 - s1 >= 7) {
+      # Test for changepoint within current segment
+      ret_vec <- .wbs_test_interval(full_dist = full_dist, type = type, start = s1, end = e1,
+                                    M = M, B = B, num_cores = num_cores)
+
+      # If significant changepoint found (p-value < alpha)
+      if (ret_vec$pval < alpha) {
+        b <- ret_vec$b_0
+
+        # Add new segments to the processing queue
+        segment_vec <- c(segment_vec, s1, b, (b + 1), e1)
+
+        # Record the changepoint and its p-value
+        cp_vec <- c(cp_vec, b)
+        pvals <- c(pvals, ret_vec$pval)
+      }
+    }
+
+    # Remove processed segment from queue
+    segment_vec <- segment_vec[-c(1, 2)]
+  }
+
+  # Prepare return values
+  if (is.null(cp_vec)) {
+    # No changepoints found
+    result$cp <- NULL
+  } else {
+    # Sort changepoints and corresponding p-values
+    sorted_results <- sort(cp_vec, index.return = TRUE)
+    result$cp <- sorted_results$x
+    result$pvals <- pvals[sorted_results$ix]
+  }
+
+  return(result)
+}
