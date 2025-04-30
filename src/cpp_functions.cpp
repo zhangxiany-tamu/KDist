@@ -1709,3 +1709,243 @@ Rcpp::NumericVector chsic_recur_cpp(const arma::mat& full_dist, int min_k = 4, i
 
   return result;
 }
+
+// [[Rcpp::export]]
+SEXP mdd_cpp(NumericMatrix x, SEXP y_sexp, std::string type = "euclidean",
+             SEXP bw_sexp = R_NilValue, double expo = 1, double scale_factor = 0.5,
+             Nullable<IntegerVector> group_x = R_NilValue, bool u_center = false,
+             bool is_distance = false) {
+  // Get package environment
+  Environment KDist = Environment::namespace_env("KDist");
+  Function KDist_matrix = KDist["KDist_matrix"];
+
+  // Check if y is a vector or matrix and convert appropriately
+  int n = x.nrow();
+  NumericMatrix y;
+  bool y_is_vector = false;
+  int p = 1; // Default dimension for y if it's a vector
+
+  if (TYPEOF(y_sexp) == REALSXP) {
+    if (Rf_isMatrix(y_sexp)) {
+      y = as<NumericMatrix>(y_sexp);
+      p = y.ncol();
+
+      // Check if dimensions match
+      if (y.nrow() != n) {
+        stop("Number of rows in x and y must match");
+      }
+    } else {
+      // y is a vector
+      y_is_vector = true;
+      NumericVector y_vec = as<NumericVector>(y_sexp);
+
+      // Check if dimensions match
+      if (y_vec.size() != n) {
+        stop("Length of y must match number of rows in x");
+      }
+
+      // Convert to a matrix with one column for consistent handling
+      y = NumericMatrix(n, 1);
+      for (int i = 0; i < n; i++) {
+        y(i, 0) = y_vec[i];
+      }
+    }
+  } else {
+    stop("y must be a numeric vector or matrix");
+  }
+
+  // Compute distance matrix for x using KDist_matrix
+  NumericMatrix dist_x_rcpp;
+
+  if (is_distance) {
+    // Use the input matrix directly as distance matrix
+    dist_x_rcpp = x;
+  } else {
+    // Calculate distance matrix using KDist_matrix with appropriate groups
+    dist_x_rcpp = KDist_matrix(x, type, bw_sexp, expo, scale_factor, group_x);
+  }
+
+  // Convert to Armadillo matrices for efficiency
+  arma::mat Dx(dist_x_rcpp.begin(), n, n, false);
+
+  // For Gaussian, Laplacian, or Polynomial kernel types, replace Dx with 1 - Dx
+  if (type == "gaussian" || type == "laplacian" || type == "polynomial") {
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < n; j++) {
+        Dx(i, j) = 1.0 - Dx(i, j);
+      }
+    }
+  }
+
+  // For Gaussian and laplacian kernel types with u_center=TRUE, ensure diagonal elements are zero
+  if (u_center && (type == "gaussian" || type == "laplacian" || type == "polynomial")) {
+    for (int i = 0; i < n; i++) {
+      Dx(i, i) = 0.0;
+    }
+  }
+
+  // Prepare the result - either a scalar or a p×p matrix
+  SEXP result;
+  if (y_is_vector || p == 1) {
+    // Scalar result
+    result = Rf_allocVector(REALSXP, 1);
+  } else {
+    // p×p matrix result
+    result = Rf_allocMatrix(REALSXP, p, p);
+  }
+
+  // Access the data of the result
+  double* result_ptr = REAL(result);
+
+  // Calculate martingale difference divergence
+  if (y_is_vector || p == 1) {
+    // Case 1: y is a vector, calculate scalar result
+
+    // Create y vector from the first column
+    arma::vec y_vec(n);
+    for (int i = 0; i < n; i++) {
+      y_vec(i) = y(i, 0);
+    }
+
+    // Calculate Dy matrix as -y_i*y_j
+    arma::mat Dy(n, n);
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < n; j++) {
+        Dy(i, j) = -y_vec(i) * y_vec(j);
+      }
+    }
+
+    double sum = 0.0;
+
+    if (u_center) {
+      // U-statistic version
+
+      // Calculate row sums
+      arma::vec rowSums_x = arma::sum(Dx, 1);
+
+      // Calculate total sums
+      double totalSum_x = arma::accu(Dx);
+
+      // Pre-calculate constants
+      double rowDivisor = n - 2.0;
+      double totalDivisor = (n - 1.0) * (n - 2.0);
+
+      // Calculate U-centered product sum directly
+      for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+          if (i != j) {  // Skip diagonal elements
+            double Ux_ij = Dx(i, j) +
+              (totalSum_x / totalDivisor) -
+              (rowSums_x(i) / rowDivisor) -
+              (rowSums_x(j) / rowDivisor);
+
+            double Uy_ij = Dy(i, j);
+
+            sum += Ux_ij * Uy_ij;
+          }
+        }
+      }
+
+      // Set the result for U-statistic
+      result_ptr[0] = sum / n / (n - 3);
+
+    } else {
+      // Standard version (double-centering)
+
+      // Calculate row means
+      arma::rowvec means_x = arma::mean(Dx, 1).t();
+
+      // Calculate grand means
+      double grand_mean_x = arma::mean(means_x);
+
+      // Calculate double-centered product sum directly
+      for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+          double centered_x = Dx(i, j) - means_x(i) - means_x(j) + grand_mean_x;
+          double centered_y = Dy(i, j);
+          sum += centered_x * centered_y;
+        }
+      }
+
+      // Set the result for standard version
+      result_ptr[0] = sum / (n * n);
+    }
+
+  } else {
+    // Case 2: y is a matrix, calculate p×p matrix result
+
+    // Create y matrix from all columns
+    arma::mat y_mat(y.begin(), n, p, false);
+
+    // Calculate for each pair of columns in y
+    for (int col1 = 0; col1 < p; col1++) {
+      for (int col2 = 0; col2 < p; col2++) {
+        // Calculate Dy matrix as -y_i*y_j for the current pair of columns
+        arma::mat Dy(n, n);
+        for (int i = 0; i < n; i++) {
+          for (int j = 0; j < n; j++) {
+            Dy(i, j) = -y_mat(i, col1) * y_mat(j, col2);
+          }
+        }
+
+        double sum = 0.0;
+
+        if (u_center) {
+          // U-statistic version
+
+          // Calculate row sums
+          arma::vec rowSums_x = arma::sum(Dx, 1);
+
+          // Calculate total sums
+          double totalSum_x = arma::accu(Dx);
+
+          // Pre-calculate constants
+          double rowDivisor = n - 2.0;
+          double totalDivisor = (n - 1.0) * (n - 2.0);
+
+          // Calculate U-centered product sum directly
+          for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+              if (i != j) {  // Skip diagonal elements
+                double Ux_ij = Dx(i, j) +
+                  (totalSum_x / totalDivisor) -
+                  (rowSums_x(i) / rowDivisor) -
+                  (rowSums_x(j) / rowDivisor);
+
+                double Uy_ij = Dy(i, j);
+
+                sum += Ux_ij * Uy_ij;
+              }
+            }
+          }
+
+          // Set the result for U-statistic in the p×p matrix
+          result_ptr[col1 + col2 * p] = sum / n / (n - 3);
+
+        } else {
+          // Standard version (double-centering)
+
+          // Calculate row means
+          arma::rowvec means_x = arma::mean(Dx, 1).t();
+
+          // Calculate grand means
+          double grand_mean_x = arma::mean(means_x);
+
+          // Calculate double-centered product sum directly
+          for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+              double centered_x = Dx(i, j) - means_x(i) - means_x(j) + grand_mean_x;
+              double centered_y = Dy(i, j);
+              sum += centered_x * centered_y;
+            }
+          }
+
+          // Set the result for standard version in the p×p matrix
+          result_ptr[col1 + col2 * p] = sum / (n * n);
+        }
+      }
+    }
+  }
+
+  return result;
+}

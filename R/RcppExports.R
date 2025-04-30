@@ -89,3 +89,7 @@ chsic_recur_cpp <- function(full_dist, min_k = 4L, max_k = 0L) {
     .Call(`_KDist_chsic_recur_cpp`, full_dist, min_k, max_k)
 }
 
+mdd_cpp <- function(x, y_sexp, type = "euclidean", bw_sexp = NULL, expo = 1, scale_factor = 0.5, group_x = NULL, u_center = FALSE, is_distance = FALSE) {
+    .Call(`_KDist_mdd_cpp`, x, y_sexp, type, bw_sexp, expo, scale_factor, group_x, u_center, is_distance)
+}
+

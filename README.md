@@ -260,32 +260,38 @@ This package is available under the [MIT License](LICENSE).
 <details>
 <summary>Click to expand references</summary>
 
-1. Székely, G. J., & Rizzo, M. L. (2004). Testing for Equal Distributions in High Dimension. *InterStat*, Nov. (5).
+1. Chakraborty, S., & Zhang, X. (2019). Distance Metrics for Measuring Joint Dependence with Application to Causal Inference. *Journal of the American Statistical Association*, 114, 1638-1650.
 
-2. Gretton, A., Fukumizu, K., Teo, C., Song, L., Schölkopf, B., & Smola, A. (2007). A kernel statistical test of independence. *Advances in Neural Information Processing Systems*, 20.
+2. Chakraborty, S., & Zhang, X. (2021). A New Framework for Distance and Kernel-based Metrics in High-dimension. *Electronic Journal of Statistics*, 15, 5455-5522.
 
-3. Székely, G. J., Rizzo, M. L., & Bakirov, N. K. (2007). Measuring and testing dependence by correlation of distances. *The Annals of Statistics*, 35(6), 2769-2794.
+3. Chakraborty, S., & Zhang, X. (2021). High-dimensional Change-point Detection Using Generalized Homogeneity Metrics. arXiv:2105.08976.
 
-4. Gretton, A., Borgwardt, K. M., Rasch, M. J., Schölkopf, B., & Smola, A. (2012). A kernel two-sample test. *Journal of Machine Learning Research*, 13, 723-773.
+4. Chen, J., & Zhang, X. (2022). D-MANOVA: Fast Distance-based Multivariate Analysis of Variance for Large-scale Microbiome Association Studies. *Bioinformatics*, 38, 286-288.
 
-5. Székely, G. J., & Rizzo, M. L. (2013). Energy statistics: A class of statistics based on distances. *Journal of Statistical Planning and Inference*, 143(8), 1249-1272.
+5. Gretton, A., Borgwardt, K. M., Rasch, M. J., Schölkopf, B., & Smola, A. (2012). A kernel two-sample test. *Journal of Machine Learning Research*, 13, 723-773.
 
-6. Pfister, N., Bühlmann, P., Schölkopf, B., & Peters, J. (2018). Kernel-based tests for joint independence. *Journal of the Royal Statistical Society: Series B*, 80(1), 5-31.
+6. Gretton, A., Fukumizu, K., Teo, C., Song, L., Schölkopf, B., & Smola, A. (2007). A kernel statistical test of independence. *Advances in Neural Information Processing Systems*, 20.
 
-7. Yao, S., Zhang, X., & Shao, X. (2018). Testing Mutual Independence in High Dimension via Distance Covariance. *Journal of the Royal Statistical Society: Series B*, 80, 455-480.
+7. Lee, C. E., & Shao, X. (2018). Martingale difference divergence matrix and its application to dimension reduction for stationary multivariate time series. *Journal of the American Statistical Association*, 113(521), 216-229.
 
-8. Chakraborty, S., & Zhang, X. (2019). Distance Metrics for Measuring Joint Dependence with Application to Causal Inference. *Journal of the American Statistical Association*, 114, 1638-1650.
+8. Pfister, N., Bühlmann, P., Schölkopf, B., & Peters, J. (2018). Kernel-based tests for joint independence. *Journal of the Royal Statistical Society: Series B*, 80(1), 5-31.
 
-9. Zhu, C., Zhang, X., Yao, S., & Shao, X. (2020). Distance-based and RKHS-based Dependence Metrics in High-dimension. *Annals of Statistics*, 48, 3366-3394.
+9. Shao, X., & Zhang, J. (2014). Martingale difference correlation and its use in high-dimensional variable screening. *Journal of the American Statistical Association*, 109(507), 1302-1318.
 
-10. Chakraborty, S., & Zhang, X. (2021). A New Framework for Distance and Kernel-based Metrics in High-dimension. *Electronic Journal of Statistics*, 15, 5455-5522.
+10. Székely, G. J., & Rizzo, M. L. (2004). Testing for Equal Distributions in High Dimension. *InterStat*, Nov(5).
 
-11. Chakraborty, S., & Zhang, X. (2021). High-dimensional Change-point Detection Using Generalized Homogeneity Metrics. arXiv:2105.08976.
+11. Székely, G. J., & Rizzo, M. L. (2013). Energy statistics: A class of statistics based on distances. *Journal of Statistical Planning and Inference*, 143(8), 1249-1272.
 
-12. Chen, J., & Zhang, X. (2022). D-MANOVA: Fast Distance-based Multivariate Analysis of Variance for Large-scale Microbiome Association Studies. *Bioinformatics*, 38, 286-288.
+12. Székely, G. J., Rizzo, M. L., & Bakirov, N. K. (2007). Measuring and testing dependence by correlation of distances. *The Annals of Statistics*, 35(6), 2769-2794.
 
-13. Zhang, K., Peters, J., Janzing, D., & Schölkopf, B. (2012). Kernel-based Conditional Independence Test and Application in Causal Discovery. arXiv preprint arXiv:1202.3775.
+13. Yan, J., Li, Z., & Zhang, X. (2024). Distance and Kernel-Based Measures for Global and Local Two-Sample Conditional Distribution Testing. arXiv:2210.08149.
 
-14. Yan, J., Li, Z., & Zhang, X. (2024). Distance and Kernel-Based Measures for Global and Local Two-Sample Conditional Distribution Testing. arXiv preprint arXiv:2210.08149.
+14. Yao, S., Zhang, X., & Shao, X. (2018). Testing Mutual Independence in High Dimension via Distance Covariance. *Journal of the Royal Statistical Society: Series B*, 80, 455-480.
+
+15. Zhang, K., Peters, J., Janzing, D., & Schölkopf, B. (2012). Kernel-based Conditional Independence Test and Application in Causal Discovery. arXiv:1202.3775.
+
+16. Zhang, X., Yao, S., & Shao, X. (2018). Conditional mean and quantile dependence testing in high dimension. *Journal of the American Statistical Association*, 113(524), 1763-1776.
+
+17. Zhu, C., Zhang, X., Yao, S., & Shao, X. (2020). Distance-based and RKHS-based Dependence Metrics in High-dimension. *Annals of Statistics*, 48, 3366-3394.
 
 </details>

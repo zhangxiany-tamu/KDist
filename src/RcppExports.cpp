@@ -323,6 +323,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// mdd_cpp
+SEXP mdd_cpp(NumericMatrix x, SEXP y_sexp, std::string type, SEXP bw_sexp, double expo, double scale_factor, Nullable<IntegerVector> group_x, bool u_center, bool is_distance);
+RcppExport SEXP _KDist_mdd_cpp(SEXP xSEXP, SEXP y_sexpSEXP, SEXP typeSEXP, SEXP bw_sexpSEXP, SEXP expoSEXP, SEXP scale_factorSEXP, SEXP group_xSEXP, SEXP u_centerSEXP, SEXP is_distanceSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type y_sexp(y_sexpSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type bw_sexp(bw_sexpSEXP);
+    Rcpp::traits::input_parameter< double >::type expo(expoSEXP);
+    Rcpp::traits::input_parameter< double >::type scale_factor(scale_factorSEXP);
+    Rcpp::traits::input_parameter< Nullable<IntegerVector> >::type group_x(group_xSEXP);
+    Rcpp::traits::input_parameter< bool >::type u_center(u_centerSEXP);
+    Rcpp::traits::input_parameter< bool >::type is_distance(is_distanceSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdd_cpp(x, y_sexp, type, bw_sexp, expo, scale_factor, group_x, u_center, is_distance));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_KDist_bw_rcpp", (DL_FUNC) &_KDist_bw_rcpp, 3},
@@ -347,6 +366,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_KDist_calculate_partial_aves_cross_cpp", (DL_FUNC) &_KDist_calculate_partial_aves_cross_cpp, 3},
     {"_KDist_hsic_recur_cpp", (DL_FUNC) &_KDist_hsic_recur_cpp, 3},
     {"_KDist_chsic_recur_cpp", (DL_FUNC) &_KDist_chsic_recur_cpp, 3},
+    {"_KDist_mdd_cpp", (DL_FUNC) &_KDist_mdd_cpp, 9},
     {NULL, NULL, 0}
 };
 

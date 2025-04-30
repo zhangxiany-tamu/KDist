@@ -1023,3 +1023,101 @@ dcor <- function(x, y, a = 1, u_center = FALSE, is_distance = FALSE) {
   return(hsic_cor(x = x, y = y, type = "euclidean", expo = a,
                   u_center = u_center, is_distance = is_distance))
 }
+
+#' Martingale Difference Divergence (MDD)
+#'
+#' Calculates the martingale difference divergence between a predictor matrix
+#' and response variable or matrix. MDD measures the conditional mean dependence
+#' and can be used for testing conditional mean independence, nonlinear feature screening,
+#' and dimension reduction for stationary multivariate time series.
+#'
+#' @param x The predictor dataset or distance matrix
+#' @param y The response variable (vector) or matrix
+#' @param type Type of kernel or distance for the predictor (default: "euclidean")
+#' @param bw Bandwidth parameter (default: NULL for automatic selection)
+#' @param expo Exponent parameter (default: 1)
+#' @param scale_factor Scaling factor for bandwidth (default: 0.5)
+#' @param group_x Optional grouping of predictor variables
+#' @param u_center Logical; use U-centering instead of V-centering (default: FALSE)
+#' @param is_distance Logical; whether the x input is already a distance matrix (default: FALSE)
+#'
+#' @details
+#' Martingale Difference Divergence (MDD) is a measure of conditional mean dependence.
+#' MDD = 0 if and only if E(Y|X) = E(Y) almost surely, which characterizes conditional
+#' mean independence. This makes it particularly useful for:
+#'
+#' 1. Testing conditional mean independence
+#' 2. High-dimensional variable screening
+#' 3. Feature selection based on conditional mean dependence
+#' 4. Dimension reduction for stationary multivariate time series
+#'
+#' For vector y, MDD returns a scalar measuring the conditional mean dependence.
+#' For matrix y, MDD returns a p×p martingale difference divergence matrix.
+#'
+#' When u_center = TRUE, the function uses an unbiased estimator based on U-statistics,
+#' which can improve performance in smaller sample sizes.
+#'
+#' @return
+#' If y is a vector, returns a scalar measuring conditional mean dependence.
+#' If y is a matrix, returns a p×p martingale difference divergence matrix.
+#'
+#' @examples
+#' # Example 1: MDD with vector response
+#' set.seed(123)
+#' x <- matrix(rnorm(100*3), ncol = 3)
+#' y <- x[,1]^2 + x[,2] + rnorm(100, sd = 0.5)
+#' mdd_val <- mdd(x, y)
+#' print(mdd_val)
+#'
+#' # Example 2: MDD with matrix response
+#' y_mat <- cbind(x[,1]^2, x[,3] + rnorm(100, sd = 0.5))
+#' mdd_mat <- mdd(x, y_mat)
+#' print(mdd_mat)
+#'
+#' # Example 3: Using U-centering for improved performance with smaller samples
+#' mdd_u <- mdd(x, y, u_center = TRUE)
+#' print(mdd_u)
+#'
+#' # Example 4: Variable screening example
+#' p <- 10
+#' n <- 100
+#' x_large <- matrix(rnorm(n*p), ncol = p)
+#' y <- x_large[,1]^2 + 0.5*x_large[,3] + rnorm(n, sd = 0.5)
+#' # Calculate MDD for each predictor
+#' mdd_values <- numeric(p)
+#' for(j in 1:p) {
+#'   mdd_values[j] <- mdd(x_large[,j,drop=FALSE], y)
+#' }
+#' # Identify most important predictors
+#' important_vars <- order(mdd_values, decreasing = TRUE)[1:3]
+#' print(important_vars)  # Should identify variables 1 and 3 as important
+#'
+#' @references
+#' Shao, X., & Zhang, J. (2014). Martingale difference correlation and its use in
+#' high-dimensional variable screening. Journal of the American Statistical
+#' Association, 109(507), 1302-1318.
+#'
+#' Zhang, X., Yao, S., & Shao, X. (2018). Conditional mean and quantile dependence
+#' testing in high dimension. Journal of the American Statistical Association,
+#' 113(524), 1763-1776.
+#'
+#' Lee, C. E., & Shao, X. (2018). Martingale difference divergence matrix and its
+#' application to dimension reduction for stationary multivariate time series.
+#' Journal of the American Statistical Association, 113(521), 216-229.
+#'
+#' @seealso
+#' \code{\link{dcov}} for distance covariance,
+#' \code{\link{hsic}} for Hilbert-Schmidt Independence Criterion
+#'
+#' @export
+mdd <- function(x, y, type = "euclidean", bw = NULL, expo = 1, scale_factor = 0.5,
+                group_x = NULL, u_center = FALSE, is_distance = FALSE) {
+  # Handle vectors
+  if (is.vector(x) && !is.matrix(x)) {
+    x <- as.matrix(x)
+  }
+
+  # Call the C++ function
+  mdd_cpp(x, y, type, bw, expo, scale_factor, group_x, u_center, is_distance)
+}
+
