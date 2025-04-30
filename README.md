@@ -99,6 +99,8 @@ KDist::dhsic(list(x1, x2, x3), type = "gaussian")  # Result: ~0.0538
 
 ```r
 library(microbenchmark)
+
+# Compare speed for independence measures
 microbenchmark(
   energy = energy::dcov(x, y)^2,
   KDist = KDist::dcov(x, y),
