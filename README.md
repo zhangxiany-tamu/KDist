@@ -112,6 +112,17 @@ microbenchmark(
 # energy 27.404974 29.661532 38.080353 31.204444 52.45794 94.32288  1000
 #  KDist  3.916607  4.743905  6.636859  4.895974  5.94129 34.01094  1000
 
+microbenchmark(
+  energy = energy::dcovU(x, y),
+  KDist = KDist::dcov(x, y, u_center = TRUE),
+  times = 1000
+)
+# Result:
+# Unit: milliseconds
+#   expr       min        lq      mean    median        uq      max neval
+# energy 32.229813 34.728496 42.476561 36.043776 58.524466 82.73976  1000
+#  KDist  5.331681  6.258855  7.071714  6.383577  7.432398 33.93377  1000
+
 # Compare speed for multi-variable independence measures
 microbenchmark(
   dHSIC = dHSIC::dhsic(list(x1, x2, x3)),
