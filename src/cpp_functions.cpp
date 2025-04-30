@@ -513,17 +513,9 @@ double hsic_cpp(NumericMatrix x, NumericMatrix y, std::string type = "euclidean"
 
     // Calculate row sums
     arma::vec rowSums_x = arma::sum(Dx, 1);
-    arma::vec rowSums_y;
-
-    if (same_matrices) {
-      rowSums_y = rowSums_x; // Reuse the same sums
-    } else {
-      rowSums_y = arma::sum(Dy, 1);
-    }
 
     // Calculate total sums
     double totalSum_x = arma::accu(Dx);
-    double totalSum_y = same_matrices ? totalSum_x : arma::accu(Dy);
 
     // Pre-calculate constants
     double rowDivisor = n - 2.0;
@@ -556,10 +548,7 @@ double hsic_cpp(NumericMatrix x, NumericMatrix y, std::string type = "euclidean"
               (rowSums_x(i) / rowDivisor) -
               (rowSums_x(j) / rowDivisor);
 
-            double Uy_ij = Dy(i, j) +
-              (totalSum_y / totalDivisor) -
-              (rowSums_y(i) / rowDivisor) -
-              (rowSums_y(j) / rowDivisor);
+            double Uy_ij = Dy(i, j);
 
             sum += Ux_ij * Uy_ij;
           }
@@ -575,17 +564,9 @@ double hsic_cpp(NumericMatrix x, NumericMatrix y, std::string type = "euclidean"
 
     // Calculate row means
     arma::rowvec means_x = arma::mean(Dx, 1).t();
-    arma::rowvec means_y;
-
-    if (same_matrices) {
-      means_y = means_x; // Reuse the same means
-    } else {
-      means_y = arma::mean(Dy, 1).t();
-    }
 
     // Calculate grand means
     double grand_mean_x = arma::mean(means_x);
-    double grand_mean_y = same_matrices ? grand_mean_x : arma::mean(means_y);
 
     // Calculate double-centered product sum directly
     if (same_matrices) {
@@ -601,7 +582,7 @@ double hsic_cpp(NumericMatrix x, NumericMatrix y, std::string type = "euclidean"
       for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
           double centered_x = Dx(i, j) - means_x(i) - means_x(j) + grand_mean_x;
-          double centered_y = Dy(i, j) - means_y(i) - means_y(j) + grand_mean_y;
+          double centered_y = Dy(i, j);
           sum += centered_x * centered_y;
         }
       }

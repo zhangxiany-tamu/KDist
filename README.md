@@ -112,9 +112,9 @@ microbenchmark(
 )
 # Result:
 # Unit: milliseconds
-#   expr       min        lq      mean    median        uq      max neval
-# energy 26.389937 30.262490 37.462686 32.261280 34.303224 116.4194  1000
-#  KDist  3.945307  5.009933  9.549976  5.135844  8.245859  77.6524  1000
+#   expr       min        lq     mean    median        uq      max neval
+# energy 27.521086 30.076083 38.49566 31.357107 53.811844 75.39031  1000
+#  KDist  3.999468  4.613976  6.52720  4.743126  5.879769 52.39874  1000
 
 # Compare speed for multi-variable independence measures
 microbenchmark(
