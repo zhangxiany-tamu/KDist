@@ -99,12 +99,6 @@ KDist::dhsic(list(x1, x2, x3), type = "gaussian")  # Result: ~0.0538
 
 ```r
 library(microbenchmark)
-
-# Compare speed for distance covariance
-n <- 1000
-x <- rnorm(n)
-y <- x + rnorm(n)
-
 microbenchmark(
   energy = energy::dcov(x, y)^2,
   KDist = KDist::dcov(x, y),
@@ -112,21 +106,21 @@ microbenchmark(
 )
 # Result:
 # Unit: milliseconds
-#   expr       min        lq     mean    median        uq      max neval
-# energy 27.521086 30.076083 38.49566 31.357107 53.811844 75.39031  1000
-#  KDist  3.999468  4.613976  6.52720  4.743126  5.879769 52.39874  1000
+#   expr       min        lq      mean    median       uq      max neval
+# energy 27.404974 29.661532 38.080353 31.204444 52.45794 94.32288  1000
+#  KDist  3.916607  4.743905  6.636859  4.895974  5.94129 34.01094  1000
 
 # Compare speed for multi-variable independence measures
 microbenchmark(
   dHSIC = dHSIC::dhsic(list(x1, x2, x3)),
   KDist = KDist::dhsic(list(x1, x2, x3), type = "gaussian"),
-  times = 100
+  times = 1000
 )
 # Result:
 # Unit: milliseconds
-#  expr      min       lq      mean   median        uq      max neval
-# dHSIC 7.540105 8.813565 10.421584 9.059462 11.489123 83.57329  1000
-# KDist 6.176732 6.908684  7.819992 6.986277  7.158436 74.45932  1000
+#  expr      min       lq     mean   median       uq      max neval
+# dHSIC 7.434407 8.690627 9.540682 9.045297 9.926941 37.41717  1000
+# KDist 5.938071 6.513383 7.236609 6.609036 7.424834 34.40101  1000
 ```
 
 These benchmarks demonstrate that KDist implementations are typically 2-3× faster than comparable packages due to efficient C++ optimization.
