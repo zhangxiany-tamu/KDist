@@ -122,18 +122,6 @@ microbenchmark(
 #   expr       min        lq      mean    median        uq      max neval
 # energy 32.229813 34.728496 42.476561 36.043776 58.524466 82.73976  1000
 #  KDist  5.331681  6.258855  7.071714  6.383577  7.432398 33.93377  1000
-
-# Compare speed for multi-variable independence measures
-microbenchmark(
-  dHSIC = dHSIC::dhsic(list(x1, x2, x3)),
-  KDist = KDist::dhsic(list(x1, x2, x3), type = "gaussian"),
-  times = 1000
-)
-# Result:
-# Unit: milliseconds
-#  expr      min       lq     mean   median       uq      max neval
-# dHSIC 7.434407 8.690627 9.540682 9.045297 9.926941 37.41717  1000
-# KDist 5.938071 6.513383 7.236609 6.609036 7.424834 34.40101  1000
 ```
 
 KDist provides several advantages:
