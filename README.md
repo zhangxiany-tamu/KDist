@@ -56,7 +56,7 @@ devtools::install_github("zhangxiany-tamu/KDist")
 
 ## 🏎️ Performance Comparison
 
-KDist offers comparable or superior performance in both accuracy and computational efficiency compared to other popular packages:
+KDist offers comparable or better performance in both accuracy and computational efficiency compared to other popular packages:
 
 ### Accuracy Comparison
 
@@ -136,7 +136,7 @@ microbenchmark(
 # KDist 5.938071 6.513383 7.236609 6.609036 7.424834 34.40101  1000
 ```
 
-KDist provides significant advantages:
+KDist provides several advantages:
 - **Unified framework** for kernel and distance-based methods
 - **Optimized C++ implementation** for computational efficiency
 - **Automatic bandwidth selection** for kernel methods
