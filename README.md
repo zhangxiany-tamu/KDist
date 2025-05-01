@@ -136,8 +136,6 @@ microbenchmark(
 # KDist 5.938071 6.513383 7.236609 6.609036 7.424834 34.40101  1000
 ```
 
-These benchmarks demonstrate that KDist implementations are typically 2-3× faster than comparable packages due to efficient C++ optimization.
-
 KDist provides significant advantages:
 - **Unified framework** for kernel and distance-based methods
 - **Optimized C++ implementation** for computational efficiency
