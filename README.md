@@ -212,6 +212,7 @@ print(result)
 - `jhsic_test()`: Joint independence test
 - `mhsic()`: Mutual independence test for high-dimensional data
 - `mdd()`: Calculate martingale difference divergence and its matrix version
+- `mdd_test()`: Martingale difference divergence-based test
 - `hd_dep_test()`: High-dimensional dependence test
 
 ### Multivariate Analysis
