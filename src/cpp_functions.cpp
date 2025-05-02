@@ -696,10 +696,13 @@ double jhsic_v(Rcpp::List x, double cc = 1.0, std::string type = "euclidean",
 
   arma::mat D(D_rcpp.begin(), n, n, false);
 
-  // Transform kernel matrices to distance matrices if gaussian or laplacian
+  // Transform kernel matrices to distance matrices if gaussian or laplacian or polynomial
   if (type == "gaussian" || type == "laplacian" || type == "polynomial") {
-    // For each element: 1 - original_value
-    D = 1 - D;
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < n; j++) {
+        D(i, j) = D(i, i) + D(j, j) - 2*D(i, j);
+      }
+    }
   }
 
   arma::mat centered = as<arma::mat>(matrix_v_center(D));
@@ -718,10 +721,13 @@ double jhsic_v(Rcpp::List x, double cc = 1.0, std::string type = "euclidean",
 
     arma::mat D_curr(D_curr_rcpp.begin(), n, n, false);
 
-    // Transform kernel matrices to distance matrices if gaussian or laplacian
+    // Transform kernel matrices to distance matrices if gaussian or laplacian or polynomial
     if (type == "gaussian" || type == "laplacian" || type == "polynomial") {
-      // For each element: 1 - original_value
-      D_curr = 1 - D_curr;
+      for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+          D_curr(i, j) = D_curr(i, i) + D_curr(j, j) - 2*D_curr(i, j);
+        }
+      }
     }
 
     arma::mat centered_curr = as<arma::mat>(matrix_v_center(D_curr));
@@ -816,10 +822,13 @@ double jhsic_u(Rcpp::List x, double cc = 1.0, std::string type = "euclidean",
 
   arma::mat D(D_rcpp.begin(), n, n, false);
 
-  // Transform kernel matrices to distance matrices if gaussian or laplacian
+  // Transform kernel matrices to distance matrices if gaussian or laplacian or polynomial
   if (type == "gaussian" || type == "laplacian" || type == "polynomial") {
-    // For each element: 1 - original_value
-    D = 1 - D;
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < n; j++) {
+        D(i, j) = D(i, i) + D(j, j) - 2*D(i, j);
+      }
+    }
   }
 
   arma::mat centered = as<arma::mat>(matrix_u_center(D));
@@ -853,10 +862,13 @@ double jhsic_u(Rcpp::List x, double cc = 1.0, std::string type = "euclidean",
 
     arma::mat D_curr(D_curr_rcpp.begin(), n, n, false);
 
-    // Transform kernel matrices to distance matrices if gaussian or laplacian
+    // Transform kernel matrices to distance matrices if gaussian or laplacian or polynomial
     if (type == "gaussian" || type == "laplacian" || type == "polynomial") {
-      // For each element: 1 - original_value
-      D_curr = 1 - D_curr;
+      for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+          D_curr(i, j) = D_curr(i, i) + D_curr(j, j) - 2*D_curr(i, j);
+        }
+      }
     }
 
     arma::mat centered_curr = as<arma::mat>(matrix_u_center(D_curr));
@@ -1753,7 +1765,7 @@ SEXP mdd_cpp(NumericMatrix x, SEXP y_sexp, std::string type = "euclidean",
   if (type == "gaussian" || type == "laplacian" || type == "polynomial") {
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < n; j++) {
-        Dx(i, j) = 1.0 - Dx(i, j);
+        Dx(i, j) = Dx(i, i) + Dx(j, j) - 2*Dx(i, j);
       }
     }
   }

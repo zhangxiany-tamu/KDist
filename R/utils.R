@@ -458,3 +458,32 @@ plot.mdd_test <- function(x, ...) {
 
   invisible(x)
 }
+
+#' Print a summary of a mdd_hd_test object
+#'
+#' @param x A mdd_hd_test object
+#' @param ... Additional arguments to be passed to methods
+#'
+#' @return Invisibly returns the object
+#' @export
+print.mdd_hd_test <- function(x, ...) {
+  cat("High-Dimensional Martingale Difference Divergence Test\n\n")
+  cat("Sample size:", x$n, "Predictors:", x$p, "\n")
+  cat("Statistic:", format(x$statistic, digits = 4), "\n")
+  cat("P-value:", format(x$p.value, digits = 4), "\n")
+  cat("\n")
+  invisible(x)
+}
+
+#' Transform Kernel Matrix to Distance Matrix
+#'
+#' Helper function to transform a kernel matrix to a distance matrix.
+#'
+#' @param K Kernel matrix
+#' @return Distance matrix
+#' @keywords internal
+transform_kernel_to_distance <- function(K) {
+  n <- nrow(K)
+  diag_matrix <- matrix(diag(K), n, n)
+  return(diag_matrix + t(diag_matrix) - 2 * K)
+}

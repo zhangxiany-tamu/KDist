@@ -1620,10 +1620,19 @@ mdd_test <- function(x, y, type = "euclidean", bw = NULL, expo = 1,
     Dx <- x
   }
 
-  Dy <- KDist_matrix(y, type = "euclidean", expo = 2)/2
-
   # Get number of observations
   n <- nrow(Dx)
+
+  # For Gaussian, Laplacian, or Polynomial kernel types, transform kernel into distance
+  if (type == "gaussian" || type == "laplacian") {
+    Dx <- 2 - 2*Dx
+  }
+  if (type == "polynomial") {
+    DDx <- matrix(diag(Dx), n, n)
+    Dx <- DDx + t(DDx) - 2*Dx
+  }
+
+  Dy <- KDist_matrix(y, type = "euclidean", expo = 2)/2
 
   if(u_center == TRUE) {
     Dx <- u_center(Dx)
@@ -1688,5 +1697,199 @@ mdd_test <- function(x, y, type = "euclidean", bw = NULL, expo = 1,
   )
 
   class(result) <- "mdd_test"
+  return(result)
+}
+
+#' High-Dimensional Martingale Difference Divergence Test
+#'
+#' @description
+#' Performs a high-dimensional test for conditional mean independence based on the
+#' Martingale Difference Divergence. This implementation is optimized for large datasets
+#' using parallel processing.
+#'
+#' @param x Predictor matrix, where each column represents a variable and each row an observation
+#' @param y Response variable (vector) or matrix with a single column
+#' @param type Type of kernel or distance to use for the predictor (default: "euclidean").
+#'   Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist",
+#'   "g-dist", or "l-dist".
+#' @param bw Bandwidth parameter for kernel distances. If NULL, it will be automatically determined.
+#' @param expo Exponent parameter for euclidean distance and polynomial kernel (default: 1).
+#' @param scale_factor Scaling factor for automatic bandwidth calculation (default: 0.5).
+#' @param num_cores Number of cores for parallel processing (default: 1).
+#'
+#' @return An object of class "mdd_hd_test" containing:
+#'   \item{statistic}{The test statistic value}
+#'   \item{p.value}{The p-value for the test}
+#'   \item{n}{Sample size}
+#'   \item{p}{Number of predictor variables}
+#'
+#' @details
+#' The high-dimensional MDD test is designed specifically for settings where the number
+#' of predictors is large, potentially even larger than the sample size. It uses a
+#' modified test statistic that accounts for high-dimensional effects and follows a
+#' standard normal distribution under the null hypothesis, enabling analytical p-value
+#' calculation without requiring bootstrap procedures.
+#'
+#' This implementation is based on the methodology described in Zhang, Yao, & Shao (2018),
+#' which provides a framework for testing conditional mean dependence in high dimensions
+#' using a standardized version of the Martingale Difference Divergence. The test is
+#' particularly effective for detecting conditional mean dependence structures in
+#' high-dimensional settings where traditional methods may fail.
+#'
+#' @examples
+#' # Example: High-dimensional data with conditional mean dependence
+#' set.seed(123)
+#' n <- 100
+#' p <- 50  # High-dimensional setting
+#'
+#' # Generate predictor variables
+#' x <- matrix(rnorm(n * p), nrow = n, ncol = p)
+#'
+#' # Generate response with conditional mean dependence on first predictor
+#' y <- x[,1]^2 + 0.5 * rnorm(n)
+#'
+#' # Perform high-dimensional MDD test
+#' test_result <- mdd_hd_test(x, y)
+#' print(test_result)
+#'
+#' @references
+#' Zhang, X., Yao, S., & Shao, X. (2018). Conditional mean and quantile dependence
+#' testing in high dimension. *The Annals of Statistics*, *46*(1), 219-246.
+#'
+#' @seealso
+#' \code{\link{mdd_test}} for standard bootstrap-based MDD testing
+#' \code{\link{mdd}} for calculating MDD without performing a test
+#'
+#' @export
+mdd_hd_test <- function(x, y, type = "euclidean", bw = NULL, expo = 1,
+                        scale_factor = 0.5, num_cores = 1) {
+  # Load parallel package
+  if (num_cores > 1 && !requireNamespace("parallel", quietly = TRUE)) {
+    warning("The 'parallel' package is required for multi-core processing. Falling back to single core.")
+    num_cores <- 1
+  }
+
+  # Input validation
+  if (!is.matrix(x)) {
+    if (is.data.frame(x)) {
+      x <- as.matrix(x)
+    } else {
+      stop("Input 'x' must be a matrix or data frame")
+    }
+  }
+
+  if (!is.matrix(y) && !is.vector(y)) {
+    if (is.data.frame(y)) {
+      y <- as.matrix(y)
+    } else {
+      stop("Input 'y' must be a matrix, data frame, or vector")
+    }
+  }
+
+  if (is.vector(y)) {
+    y <- matrix(y, ncol = 1)
+  }
+
+  # Get dimensions
+  n <- nrow(x)
+  p <- ncol(x)
+
+  # Check if dimensions match
+  if (nrow(y) != n) {
+    stop("Number of observations in x and y must be the same")
+  }
+
+  # Check if p is at least 2
+  if (p < 2) {
+    stop("Predictor matrix x must have at least 2 columns")
+  }
+
+  # Calculate distance matrix for response once
+  Dy <- KDist_matrix(y, type = "euclidean", expo = 2)/2
+  Dy <- u_center(Dy)
+  Dy_sq <- Dy^2
+
+  # Pre-calculate all distance matrices for predictors
+  # Using parallel processing if multiple cores are available
+  calculate_distance <- function(i) {
+    Dx_i <- KDist_matrix(x[, i, drop = FALSE], type = type, bw = bw,
+                         expo = expo, scale_factor = scale_factor)
+
+    # Transform kernel to distance if necessary
+    if (type %in% c("gaussian", "laplacian", "polynomial")) {
+      Dx_i <- transform_kernel_to_distance(Dx_i)
+    }
+
+    # Center matrix
+    Dx_i <- u_center(Dx_i)
+
+    return(Dx_i)
+  }
+
+  if (num_cores > 1) {
+    Dx_list <- parallel::mclapply(1:p, calculate_distance, mc.cores = num_cores)
+  } else {
+    Dx_list <- lapply(1:p, calculate_distance)
+  }
+
+  # Calculate numerator (sum of all individual contributions)
+  numerator <- 0
+  for (i in 1:p) {
+    numerator <- numerator + sum(Dx_list[[i]] * Dy)
+  }
+
+  # Calculate denominator
+  if (num_cores > 1 && p > 10) {
+    # For large p, use parallel processing for the denominator calculation
+    # Create batches of indices to process in parallel
+    batch_size <- ceiling(p^2 / num_cores)
+    batch_indices <- split(1:(p^2), ceiling(seq_along(1:(p^2)) / batch_size))
+
+    process_batch <- function(indices) {
+      total <- 0
+      for (idx in indices) {
+        i <- ceiling(idx / p)
+        j <- ((idx - 1) %% p) + 1
+        total <- total + sum(Dx_list[[i]] * Dx_list[[j]] * Dy_sq)
+      }
+      return(total)
+    }
+
+    batch_results <- parallel::mclapply(batch_indices, process_batch, mc.cores = num_cores)
+    denominator <- sum(unlist(batch_results))
+  } else {
+    # For smaller p or single core, use nested loops
+    denominator <- 0
+    for (i in 1:p) {
+      for (j in 1:p) {
+        denominator <- denominator + sum(Dx_list[[i]] * Dx_list[[j]] * Dy_sq)
+      }
+    }
+  }
+
+  # Calculate factors and final statistic
+  const <- ((n-3)/(n-1))^4
+  factor_num <- sqrt(n*(n-1)/2)/n/(n-3)
+  factor_den <- 1/n/(n-1)/const
+
+  # Apply factors to numerator and denominator
+  numerator <- numerator * factor_num
+  denominator <- sqrt(denominator * factor_den)
+
+  # Calculate test statistic
+  statistic <- numerator / denominator
+
+  # Calculate p-value from standard normal distribution
+  p_value <- 1 - pnorm(statistic)
+
+  # Create result list
+  result <- list(
+    statistic = statistic,
+    p.value = p_value,
+    n = n,
+    p = p
+  )
+
+  class(result) <- "mdd_hd_test"
   return(result)
 }

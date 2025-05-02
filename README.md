@@ -213,6 +213,7 @@ print(result)
 - `mhsic()`: Mutual independence test for high-dimensional data
 - `mdd()`: Calculate martingale difference divergence and its matrix version
 - `mdd_test()`: Martingale difference divergence-based test
+- `mdd_hd_test()`: High-dimensional martingale difference divergence-based test
 - `hd_dep_test()`: High-dimensional dependence test
 
 ### Multivariate Analysis
@@ -233,6 +234,7 @@ print(result)
 ### Utilities
 - `v_center()`: V-centering for matrices
 - `u_center()`: U-centering for matrices
+- `transform_kernel_to_distance()`: Transform kernel matrix to distance matrix
 - Various plot and print methods
 
 </details>
