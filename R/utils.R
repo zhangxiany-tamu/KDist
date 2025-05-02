@@ -408,3 +408,53 @@ plot.dcov_test <- function(x, ...) {
 
   invisible(x)
 }
+
+#' Print a summary of a mdd_test object
+#'
+#' @param x A mdd_test object
+#' @param ... Additional arguments to be passed to methods
+#'
+#' @return Invisibly returns the object
+#' @export
+print.mdd_test <- function(x, ...) {
+  cat("Martingale Difference Divergence Test\n\n")
+  cat("Statistic:", format(x$statistic, digits = 4), "\n")
+  cat("P-value:", format(x$p.value, digits = 4), "\n")
+  cat("Bootstrap method:", x$boot_type, "\n")
+  cat("Sample size:", x$n, "\n")
+  cat("\n")
+  cat("Based on", x$n_boot, "bootstrap iterations\n")
+  invisible(x)
+}
+
+#' Plot a histogram of bootstrap values for mdd_test
+#'
+#' @param x A mdd_test object
+#' @param ... Additional arguments to be passed to methods
+#'
+#' @return Invisibly returns the plot object
+#' @export
+plot.mdd_test <- function(x, ...) {
+  old_par <- par(no.readonly = TRUE)
+  on.exit(par(old_par))
+
+  # Create a histogram of bootstrap values
+  hist(x$wild_bootstrap_values,
+       main = paste("Wild Bootstrap Distribution (", x$boot_type, ")", sep = ""),
+       xlab = "MDD Statistic",
+       freq = FALSE,
+       ...)
+
+  # Draw vertical lines for the observed statistic (two-sided test)
+  abline(v = x$statistic, col = "red", lwd = 2)
+  abline(v = -x$statistic, col = "blue", lwd = 2, lty = 2)
+
+  # Add a legend
+  legend("topright",
+         legend = c(paste("Observed =", format(x$statistic, digits = 4)),
+                    paste("P-value =", format(x$p.value, digits = 4)),
+                    paste("n =", x$n, ", bootstrap samples =", x$n_boot)),
+         bty = "n")
+
+  invisible(x)
+}

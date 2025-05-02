@@ -93,3 +93,7 @@ mdd_cpp <- function(x, y_sexp, type = "euclidean", bw_sexp = NULL, expo = 1, sca
     .Call(`_KDist_mdd_cpp`, x, y_sexp, type, bw_sexp, expo, scale_factor, group_x, u_center, is_distance)
 }
 
+mdd_bootstrap_cpp <- function(Dx, Dy, n_boot, boot_type = "normal") {
+    .Call(`_KDist_mdd_bootstrap_cpp`, Dx, Dy, n_boot, boot_type)
+}
+

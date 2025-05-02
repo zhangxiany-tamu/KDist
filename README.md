@@ -268,24 +268,26 @@ This package is available under the [MIT License](LICENSE).
 
 7. Lee, C. E., & Shao, X. (2018). Martingale difference divergence matrix and its application to dimension reduction for stationary multivariate time series. *Journal of the American Statistical Association*, 113(521), 216-229.
 
-8. Pfister, N., Bühlmann, P., Schölkopf, B., & Peters, J. (2018). Kernel-based tests for joint independence. *Journal of the Royal Statistical Society: Series B*, 80(1), 5-31.
+8. Lee, C. E., Zhang, X., & Shao, X. (2020). Testing conditional mean independence for functional data. *Biometrika*, 107(2), 331-346.
 
-9. Shao, X., & Zhang, J. (2014). Martingale difference correlation and its use in high-dimensional variable screening. *Journal of the American Statistical Association*, 109(507), 1302-1318.
+9. Pfister, N., Bühlmann, P., Schölkopf, B., & Peters, J. (2018). Kernel-based tests for joint independence. *Journal of the Royal Statistical Society: Series B*, 80(1), 5-31.
 
-10. Székely, G. J., & Rizzo, M. L. (2004). Testing for Equal Distributions in High Dimension. *InterStat*, Nov(5).
+10. Shao, X., & Zhang, J. (2014). Martingale difference correlation and its use in high-dimensional variable screening. *Journal of the American Statistical Association*, 109(507), 1302-1318.
 
-11. Székely, G. J., & Rizzo, M. L. (2013). Energy statistics: A class of statistics based on distances. *Journal of Statistical Planning and Inference*, 143(8), 1249-1272.
+11. Székely, G. J., & Rizzo, M. L. (2004). Testing for Equal Distributions in High Dimension. *InterStat*, Nov(5).
 
-12. Székely, G. J., Rizzo, M. L., & Bakirov, N. K. (2007). Measuring and testing dependence by correlation of distances. *The Annals of Statistics*, 35(6), 2769-2794.
+12. Székely, G. J., & Rizzo, M. L. (2013). Energy statistics: A class of statistics based on distances. *Journal of Statistical Planning and Inference*, 143(8), 1249-1272.
 
-13. Yan, J., Li, Z., & Zhang, X. (2024). Distance and Kernel-Based Measures for Global and Local Two-Sample Conditional Distribution Testing. arXiv:2210.08149.
+13. Székely, G. J., Rizzo, M. L., & Bakirov, N. K. (2007). Measuring and testing dependence by correlation of distances. *The Annals of Statistics*, 35(6), 2769-2794.
 
-14. Yao, S., Zhang, X., & Shao, X. (2018). Testing Mutual Independence in High Dimension via Distance Covariance. *Journal of the Royal Statistical Society: Series B*, 80, 455-480.
+14. Yan, J., Li, Z., & Zhang, X. (2024). Distance and Kernel-Based Measures for Global and Local Two-Sample Conditional Distribution Testing. arXiv:2210.08149.
 
-15. Zhang, K., Peters, J., Janzing, D., & Schölkopf, B. (2012). Kernel-based Conditional Independence Test and Application in Causal Discovery. arXiv:1202.3775.
+15. Yao, S., Zhang, X., & Shao, X. (2018). Testing Mutual Independence in High Dimension via Distance Covariance. *Journal of the Royal Statistical Society: Series B*, 80, 455-480.
 
-16. Zhang, X., Yao, S., & Shao, X. (2018). Conditional mean and quantile dependence testing in high dimension. *Journal of the American Statistical Association*, 113(524), 1763-1776.
+16. Zhang, K., Peters, J., Janzing, D., & Schölkopf, B. (2012). Kernel-based Conditional Independence Test and Application in Causal Discovery. arXiv:1202.3775.
 
-17. Zhu, C., Zhang, X., Yao, S., & Shao, X. (2020). Distance-based and RKHS-based Dependence Metrics in High-dimension. *Annals of Statistics*, 48, 3366-3394.
+17. Zhang, X., Yao, S., & Shao, X. (2018). Conditional mean and quantile dependence testing in high dimension. *Journal of the American Statistical Association*, 113(524), 1763-1776.
+
+18. Zhu, C., Zhang, X., Yao, S., & Shao, X. (2020). Distance-based and RKHS-based Dependence Metrics in High-dimension. *Annals of Statistics*, 48, 3366-3394.
 
 </details>

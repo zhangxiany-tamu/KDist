@@ -1499,3 +1499,194 @@ hd_dep_test <- function(x, y, type = "e-dist", bw = NULL,
   return(list(statistic = t_statistic, p.value = p_value,
               correlation = hsic_cor_val, df = df - 1))
 }
+
+#' Martingale Difference Divergence (MDD) Test
+#'
+#' @description
+#' Performs a wild bootstrap test for conditional mean independence based on the
+#' Martingale Difference Divergence. This test assesses whether a response variable
+#' is conditionally mean independent of a predictor, which is a weaker condition than
+#' full conditional independence.
+#'
+#' @param x Predictor dataset (matrix, data frame, or vector) or pre-computed distance matrix
+#' @param y Response variable (vector)
+#' @param type Type of kernel or distance to use for the predictor (default: "euclidean").
+#'   Options include "euclidean", "polynomial", "gaussian", "laplacian", "e-dist",
+#'   "g-dist", or "l-dist".
+#' @param bw Bandwidth parameter for kernel distances. If NULL, it will be automatically determined.
+#' @param expo Exponent parameter for euclidean distance and polynomial kernel (default: 1).
+#' @param scale_factor Scaling factor for automatic bandwidth calculation (default: 0.5).
+#' @param group_x Optional vector specifying group membership for each column in predictor data.
+#'   Used for group-wise distance calculations in "e-dist", "g-dist", or "l-dist".
+#' @param u_center Logical; use U-centering instead of V-centering (default: FALSE).
+#'   U-centering provides an unbiased estimate by excluding diagonal terms.
+#' @param n_boot Number of bootstrap iterations to use for the test (default: 1000).
+#' @param seed Random seed for reproducibility (default: NULL).
+#' @param num_cores Number of cores for parallel computing (default: 1).
+#' @param is_distance Logical; whether the input x is already a distance matrix (default: FALSE).
+#' @param boot_type Type of wild bootstrap distribution (default: "normal").
+#'   Options are "normal" (standard normal), "mammen" (Mammen's two-point distribution),
+#'   or "rademacher" (Rademacher distribution).
+#'
+#' @return An object of class "mdd_test" containing:
+#'   \item{statistic}{MDD test statistic value}
+#'   \item{p.value}{Wild bootstrap p-value}
+#'   \item{wild_bootstrap_values}{Vector of bootstrap statistic values}
+#'   \item{boot_type}{The bootstrap distribution type used}
+#'   \item{n}{Sample size}
+#'   \item{n_boot}{Number of bootstrap iterations}
+#'
+#' @details
+#' The MDD test checks whether E(Y|X) = E(Y), which is the conditional mean independence
+#' condition. Unlike tests for full conditional independence, the MDD focuses specifically
+#' on the conditional mean. The test is based on a distance/kernel representation that
+#' transforms the original problem into one of checking the covariance between certain
+#' distance matrices.
+#'
+#' The wild bootstrap is used to calculate the p-value, with three distribution options:
+#' 1. Normal: Standard normal distribution
+#' 2. Mammen: Mammen's two-point distribution, which has specific statistical properties
+#' 3. Rademacher: Takes values -1 or 1 with equal probability
+#'
+#' When u_center = TRUE, the function uses an unbiased estimator based on U-statistics
+#' that removes diagonal terms from the distance matrices, which can improve performance
+#' for small sample sizes.
+#'
+#' @references
+#' Lee, C. E., Zhang, X., & Shao, X. (2020). Testing conditional mean independence for
+#' functional data. *Biometrika*, 107(2), 331-346.
+#'
+#' @examples
+#' # Example 1: Independent variables
+#' set.seed(123)
+#' x1 <- matrix(rnorm(100), ncol = 1)
+#' y1 <- matrix(rnorm(100), ncol = 1)
+#' test1 <- mdd_test(x1, y1, boot_type = "normal", n_boot = 200)
+#' print(test1)
+#' plot(test1)
+#'
+#' # Example 2: Conditional mean dependence
+#' x2 <- matrix(runif(100), ncol = 1)
+#' y2 <- matrix(x2^2 + 0.5*rnorm(100), ncol = 1)  # Y depends on X^2
+#' test2 <- mdd_test(x2, y2, boot_type = "mammen", n_boot = 200)
+#' print(test2)
+#'
+#' # Example 3: Parallel computation with multiple cores
+#' \dontrun{
+#' test3 <- mdd_test(x2, y2, boot_type = "rademacher", n_boot = 500, num_cores = 2)
+#' print(test3)
+#' }
+#'
+#' @seealso
+#' \code{\link{mdd}} for calculating MDD without performing a test
+#' \code{\link{hsic_test}} for general independence testing
+#'
+#' @export
+mdd_test <- function(x, y, type = "euclidean", bw = NULL, expo = 1,
+                     scale_factor = 0.5, group_x = NULL, u_center = FALSE,
+                     n_boot = 1000, seed = NULL, num_cores = 1, is_distance = FALSE,
+                     boot_type = c("normal", "mammen", "rademacher")) {
+  # Load parallel package
+  if (!requireNamespace("parallel", quietly = TRUE)) {
+    stop("The 'parallel' package is required for this function. Please install it.")
+  }
+
+  # Match boot_type argument
+  boot_type <- match.arg(boot_type)
+
+  # Set random seed if provided
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+
+  if (!is_distance) {
+    # Convert vectors to matrices if needed
+    if (is.vector(x) && !is.matrix(x)) {
+      x <- matrix(x, ncol = 1)
+    }
+    if (is.vector(y) && !is.matrix(y)) {
+      y <- matrix(y, ncol = 1)
+    }
+
+    # Ensure dimensions of x and y match in the first dimension (number of observations)
+    if (nrow(x) != nrow(y)) {
+      stop("Number of observations in x and y must be the same")
+    }
+
+    # Calculate distance matrices with appropriate group parameters
+    Dx <- KDist_matrix(x, type = type, bw = bw, expo = expo, scale_factor = scale_factor, group = group_x)
+  } else {
+    # Use x directly as distance matrices
+    Dx <- x
+  }
+
+  Dy <- KDist_matrix(y, type = "euclidean", expo = 2)/2
+
+  # Get number of observations
+  n <- nrow(Dx)
+
+  if(u_center == TRUE) {
+    Dx <- u_center(Dx)
+    Dy <- u_center(Dy)
+    factor <- n*(n-3)
+  } else {
+    Dx <- v_center(Dx)
+    Dy <- v_center(Dy)
+    factor <- n^2
+  }
+
+  # Calculate observed test statistic
+  observed_mdd <- sum(Dx*Dy)
+
+  # If num_cores is 1 or less, use the C++ function directly
+  if (num_cores <= 1) {
+    # Use the Rcpp function to calculate bootstrap statistics
+    wb_results <- mdd_bootstrap_cpp(Dx, Dy, n_boot, boot_type)
+  } else {
+    # Otherwise, use mclapply for parallel processing
+
+    # Divide the bootstrap iterations among cores
+    n_boot_per_core <- ceiling(n_boot / num_cores)
+
+    # Create a wrapper function for parallel calculation
+    boot_wrapper <- function(i) {
+      # Calculate the actual number of bootstrap iterations for this core
+      actual_n_boot <- min(n_boot_per_core, n_boot - (i-1) * n_boot_per_core)
+
+      # If seed is provided, make sure each core gets a different but reproducible seed
+      if (!is.null(seed)) {
+        core_seed <- seed + i * 1000
+      } else {
+        core_seed <- NULL
+      }
+
+      # Call the C++ function for this chunk of bootstrap iterations
+      return(mdd_bootstrap_cpp(Dx, Dy, actual_n_boot, boot_type))
+    }
+
+    # Run bootstrap in parallel
+    results_list <- parallel::mclapply(1:num_cores, boot_wrapper, mc.cores = num_cores)
+
+    # Combine results from all cores
+    wb_results <- do.call(c, results_list)
+
+    # Ensure we have the correct number of bootstrap samples
+    wb_results <- wb_results[1:n_boot]
+  }
+
+  # Calculate p-value (proportion of bootstrap statistics >= observed in absolute value)
+  p.value <- mean(abs(wb_results) >= abs(observed_mdd))
+
+  # Create result list
+  result <- list(
+    statistic = observed_mdd/factor,
+    p.value = p.value,
+    wild_bootstrap_values = wb_results/factor,
+    boot_type = boot_type,
+    n = n,
+    n_boot = n_boot
+  )
+
+  class(result) <- "mdd_test"
+  return(result)
+}

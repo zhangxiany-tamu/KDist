@@ -1930,3 +1930,55 @@ SEXP mdd_cpp(NumericMatrix x, SEXP y_sexp, std::string type = "euclidean",
 
   return result;
 }
+
+// [[Rcpp::export]]
+NumericVector mdd_bootstrap_cpp(NumericMatrix Dx, NumericMatrix Dy, int n_boot,
+                                std::string boot_type = "normal") {
+  int n = Dx.nrow();
+  NumericVector bootstrap_results(n_boot);
+
+  // Main bootstrap loop
+  for (int b = 0; b < n_boot; b++) {
+    // Generate wild bootstrap weights based on selected distribution
+    NumericVector e(n);
+
+    if (boot_type == "normal") {
+      // Standard normal distribution
+      for (int i = 0; i < n; i++) {
+        e[i] = R::rnorm(0, 1);
+      }
+    } else if (boot_type == "mammen") {
+      // Mammen's two-point distribution
+      // P(e = -(-√5-1)/2) = (√5+1)/(2√5) ≈ 0.7236
+      // P(e = (√5+1)/2) = (√5-1)/(2√5) ≈ 0.2764
+
+      // Calculate Mammen's two-point distribution values
+      double p_plus = (sqrt(5) - 1) / (2 * sqrt(5));  // Probability for the positive value
+      double val_minus = (1 -sqrt(5)) / 2;         // Value when random draw < p_plus
+      double val_plus = (sqrt(5) + 1) / 2;            // Value when random draw >= p_plus
+
+      // Generate Mammen's two-point distribution
+      for (int i = 0; i < n; i++) {
+        double u = R::runif(0, 1);
+        e[i] = (u < p_plus) ? val_plus : val_minus;
+      }
+    } else if (boot_type == "rademacher") {
+      // Rademacher distribution: P(e = -1) = P(e = 1) = 0.5
+      for (int i = 0; i < n; i++) {
+        e[i] = (R::runif(0, 1) < 0.5) ? -1.0 : 1.0;
+      }
+    }
+
+    // Calculate bootstrap statistic
+    double sum = 0.0;
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < n; j++) {
+        sum += e[i] * e[j] * Dx(i, j) * Dy(i, j);
+      }
+    }
+
+    bootstrap_results[b] = sum;
+  }
+
+  return bootstrap_results;
+}

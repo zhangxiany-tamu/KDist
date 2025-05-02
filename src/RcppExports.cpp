@@ -342,6 +342,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// mdd_bootstrap_cpp
+NumericVector mdd_bootstrap_cpp(NumericMatrix Dx, NumericMatrix Dy, int n_boot, std::string boot_type);
+RcppExport SEXP _KDist_mdd_bootstrap_cpp(SEXP DxSEXP, SEXP DySEXP, SEXP n_bootSEXP, SEXP boot_typeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type Dx(DxSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Dy(DySEXP);
+    Rcpp::traits::input_parameter< int >::type n_boot(n_bootSEXP);
+    Rcpp::traits::input_parameter< std::string >::type boot_type(boot_typeSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdd_bootstrap_cpp(Dx, Dy, n_boot, boot_type));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_KDist_bw_rcpp", (DL_FUNC) &_KDist_bw_rcpp, 3},
@@ -367,6 +381,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_KDist_hsic_recur_cpp", (DL_FUNC) &_KDist_hsic_recur_cpp, 3},
     {"_KDist_chsic_recur_cpp", (DL_FUNC) &_KDist_chsic_recur_cpp, 3},
     {"_KDist_mdd_cpp", (DL_FUNC) &_KDist_mdd_cpp, 9},
+    {"_KDist_mdd_bootstrap_cpp", (DL_FUNC) &_KDist_mdd_bootstrap_cpp, 4},
     {NULL, NULL, 0}
 };
 
