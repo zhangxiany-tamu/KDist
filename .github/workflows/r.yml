@@ -7,23 +7,22 @@
 # additional example workflows available for the R community.
 
 name: R
-
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
 permissions:
   contents: read
-
 jobs:
   build:
     runs-on: macos-latest
+    # Add the environment variable here
+    env:
+      _R_CHECK_FORCE_SUGGESTS_: false
     strategy:
       matrix:
-        r-version: ['4.1.1']
-
+        r-version: ['4.3.2', '4.4.3']
     steps:
       - uses: actions/checkout@v4
       - name: Set up R ${{ matrix.r-version }}
