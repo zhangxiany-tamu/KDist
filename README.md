@@ -190,6 +190,7 @@ print(result)
 
 ### Core Functions
 - `KDist_matrix()`: Compute distance or kernel matrices
+- `KDist_fda_matrix()`: Compute distance or kernel matrices for functional data
 - `bw_optim()`: Automatic bandwidth selection for kernel methods
 
 ### Two-Sample Testing
