@@ -6,53 +6,66 @@
 # See https://github.com/r-lib/actions/tree/master/examples#readme for
 # additional example workflows available for the R community.
 
-name: R
+# .github/workflows/R-CMD-check.yaml
+name: R-CMD-check
+
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+
 permissions:
   contents: read
+
 jobs:
-  build:
-    runs-on: macos-latest
+  R-CMD-check:
+    runs-on: macos-latest # Using macOS as per your original file
+
+    # Consider removing this if you want Suggests packages to be strictly required by the check
+    # Since `needs: check` below installs them, this mainly affects how R CMD check reports missing suggests
     env:
       _R_CHECK_FORCE_SUGGESTS_: false
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
     strategy:
+      fail-fast: false # Prevent job cancellation if one matrix build fails
       matrix:
-        r-version: ['4.1.1', 'release']
+        r-version: ['4.1.1', 'release'] # Using R 4.1.1 and latest release
+
     steps:
       - uses: actions/checkout@v4
-      
+
+      # Setup R using r-lib/actions
       - name: Set up R ${{ matrix.r-version }}
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.r-version }}
-          
-      - name: Install system dependencies
+          use-public-rspm: true # Use RSPM for potentially faster binary installs (where available)
+
+      # Install system dependencies needed for R package compilation on macOS
+      - name: Install system dependencies (macOS)
         run: |
-          brew install gcc gfortran
-          echo "Installed gfortran version:"
-          gfortran --version
-      
-      - name: Install binary packages
-        run: |
-          install.packages(c("remotes", "rcmdcheck", "Rcpp"))
-          remotes::install_cran("RcppArmadillo", type="binary")
-        shell: Rscript {0}
-          
-      - name: Setup R package dependencies
+          brew install gcc  # Installs the GNU Compiler Collection, including gfortran
+          echo "Installed GCC which includes gfortran:"
+          gcc --version
+          gfortran --version # Verify gfortran is available
+
+      # REMOVED the manual "Install binary packages" step
+
+      # Install R package dependencies using r-lib/actions
+      # This handles Imports, Depends, LinkingTo, Suggests, and extra packages
+      - name: Install R package dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
             any::rcmdcheck
-          needs: check
-          
-      - name: Check
-        env:
-          _R_CHECK_FORCE_SUGGESTS_: false
+          needs: check # Install all dependencies needed for check (includes Suggests)
+
+      # Run R CMD check using the rcmdcheck package
+      - name: Check R package
+        # env:
+        #   _R_CHECK_FORCE_SUGGESTS_: false # Already set at job level if needed
         run: |
           rcmdcheck::rcmdcheck(args = c("--no-manual", "--no-build-vignettes"), error_on = "error")
         shell: Rscript {0}
