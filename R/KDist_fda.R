@@ -14,6 +14,10 @@
 #'
 #' @return A distance or kernel matrix depending on the output parameter
 #'
+#' @details This function requires the \code{fda} package to be installed.
+#' If not already installed, it can be obtained from CRAN via
+#' \code{install.packages("fda")}.
+#'
 #' @examples
 #' library(fda)
 #'

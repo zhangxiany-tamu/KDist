@@ -15,12 +15,12 @@ RoxygenNote: 7.3.2
 Imports: 
     Rcpp (>= 1.0.0),
     stats,
-    fda,
     parallel
 LinkingTo: 
     Rcpp,
     RcppArmadillo
 Suggests:
+    fda,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Depends: 
