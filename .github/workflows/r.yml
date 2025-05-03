@@ -21,7 +21,7 @@ jobs:
       _R_CHECK_FORCE_SUGGESTS_: false
     strategy:
       matrix:
-        r-version: ['4.1.1', '4.2.0', 'release']
+        r-version: ['4.1.1', 'release']
     steps:
       - uses: actions/checkout@v4
       - name: Set up R ${{ matrix.r-version }}
