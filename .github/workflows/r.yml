@@ -31,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false # Prevent job cancellation if one matrix build fails
       matrix:
-        r-version: ['4.1.1', 'release'] # Using R 4.1.1 and latest release
+        r-version: ['release'] # Using latest release
 
     steps:
       - uses: actions/checkout@v4
