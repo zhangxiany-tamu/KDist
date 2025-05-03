@@ -19,6 +19,7 @@ KDist provides a comprehensive collection of kernel and distance-based methods f
 - **Independence testing**: Measure dependence between random vectors
 - **Multivariate hypothesis testing**: Perform nonparametric MANOVA
 - **High-dimensional analysis**: Analyze data where dimensions exceed sample size
+- **Functional data analysis**: Apply kernel and distance methods to functional data
 - **Change-point detection**: Identify structural changes in sequential data
 - **Conditional testing**: Test conditional independence and distribution differences
 
