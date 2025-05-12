@@ -26,7 +26,7 @@ my_function <- function(key) {
 #' Detects a single change point in sequential data using kernel-based generalized
 #' homogeneity metrics. The method is based on the high-dimensional t-test framework proposed in
 #' Chakraborty & Zhang (2021) and implemented for change-point detection as described in
-#' Chakraborty & Zhang (2021, arXiv:2105.08976).
+#' Chakraborty, Wang & Zhang (2025, arXiv:2105.08976).
 #'
 #' @details
 #' This function implements a kernel and distance-based approach for detecting a single structural change in multivariate
@@ -114,7 +114,7 @@ my_function <- function(key) {
 #' Chakraborty, S., & Zhang, X. (2021). A New Framework for Distance and Kernel-based Metrics
 #' in High-dimension. \emph{Electronic Journal of Statistics}, 15, 5455-5522.
 #'
-#' Chakraborty, S., & Zhang, X. (2021). High-dimensional Change-point Detection Using
+#' Chakraborty, S., Wang, R., & Zhang, X. (2025). High-dimensional Change-point Detection Using
 #' Generalized Homogeneity Metrics. arXiv:2105.08976.
 #'
 #' @seealso
@@ -859,7 +859,7 @@ adjustedRandIndex <- function(x, y)
 #' Fryzlewicz, P. (2014). Wild binary segmentation for multiple change-point detection.
 #' *The Annals of Statistics*, 42(6), 2243-2281.
 #'
-#' Chakraborty, S., & Zhang, X. (2021). High-dimensional Change-point Detection Using
+#' Chakraborty, S., Wang, R., & Zhang, X. (2025). High-dimensional Change-point Detection Using
 #' Generalized Homogeneity Metrics. arXiv:2105.08976.
 #'
 #' @seealso

@@ -263,7 +263,7 @@ This package is available under the [MIT License](LICENSE).
 
 2. Chakraborty, S., & Zhang, X. (2021). A New Framework for Distance and Kernel-based Metrics in High-dimension. *Electronic Journal of Statistics*, 15, 5455-5522.
 
-3. Chakraborty, S., & Zhang, X. (2021). High-dimensional Change-point Detection Using Generalized Homogeneity Metrics. arXiv:2105.08976.
+3. Chakraborty, S., Wang, R., & Zhang, X. (2025). High-dimensional Change-point Detection Using Generalized Homogeneity Metrics. arXiv:2105.08976.
 
 4. Chen, J., & Zhang, X. (2022). D-MANOVA: Fast Distance-based Multivariate Analysis of Variance for Large-scale Microbiome Association Studies. *Bioinformatics*, 38, 286-288.
 
