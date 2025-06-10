@@ -1,19 +1,15 @@
 # KDist: Kernel and Distance Methods for Statistical Inference
 
 <div align="center">
-
 <img src="images/kdist-logo.png" alt="KDist Logo" width="200"/>
+</div>
 
 ![KDist](https://img.shields.io/badge/R-KDist-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-</div>
+**KDist** provides a comprehensive collection of kernel and distance-based methods for nonparametric statistical inference. These powerful methods excel in scenarios where traditional parametric approaches may fail, particularly with complex, high-dimensional data.
 
-## 📋 Overview
-
-KDist provides a comprehensive collection of kernel and distance-based methods for nonparametric statistical inference. These powerful methods excel in scenarios where traditional parametric approaches may fail, particularly with complex, high-dimensional data.
-
-### 🔍 Key Applications
+## 🔍 Key Applications
 
 - **Two-sample testing**: Detect differences between multivariate distributions
 - **Independence testing**: Measure dependence between random vectors
