@@ -4,8 +4,8 @@
 
 <img src="images/kdist-logo.png" alt="KDist Logo" width="200"/>
 
-[![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/KDist)](https://cran.r-project.org/package=KDist)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![KDist](https://img.shields.io/badge/R-KDist-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 </div>
 
