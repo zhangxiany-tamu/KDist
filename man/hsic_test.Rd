@@ -45,7 +45,9 @@ U-centering provides an unbiased estimate of HSIC by excluding diagonal terms in
 
 \item{seed}{Random seed for reproducibility (default: NULL).}
 
-\item{num_cores}{Number of cores for parallel computing (default: 1).}
+\item{num_cores}{Retained for backward compatibility (default: 1). The
+permutation loop now runs in optimized C++, so this argument no
+longer affects the computation.}
 
 \item{is_distance}{Logical; whether input matrices x and y are already distance/kernel matrices (default: FALSE).}
 }

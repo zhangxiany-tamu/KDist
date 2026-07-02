@@ -356,6 +356,66 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// hsic_perm_cpp
+NumericVector hsic_perm_cpp(NumericMatrix Dx_in, NumericMatrix Dy_in, IntegerMatrix perms, bool u_center, bool zero_diag);
+RcppExport SEXP _KDist_hsic_perm_cpp(SEXP Dx_inSEXP, SEXP Dy_inSEXP, SEXP permsSEXP, SEXP u_centerSEXP, SEXP zero_diagSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type Dx_in(Dx_inSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Dy_in(Dy_inSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type perms(permsSEXP);
+    Rcpp::traits::input_parameter< bool >::type u_center(u_centerSEXP);
+    Rcpp::traits::input_parameter< bool >::type zero_diag(zero_diagSEXP);
+    rcpp_result_gen = Rcpp::wrap(hsic_perm_cpp(Dx_in, Dy_in, perms, u_center, zero_diag));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mmd_perm_cpp
+NumericVector mmd_perm_cpp(NumericMatrix D_in, IntegerMatrix perms, int n, int m, bool distance_type, bool u_center);
+RcppExport SEXP _KDist_mmd_perm_cpp(SEXP D_inSEXP, SEXP permsSEXP, SEXP nSEXP, SEXP mSEXP, SEXP distance_typeSEXP, SEXP u_centerSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type D_in(D_inSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type perms(permsSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type m(mSEXP);
+    Rcpp::traits::input_parameter< bool >::type distance_type(distance_typeSEXP);
+    Rcpp::traits::input_parameter< bool >::type u_center(u_centerSEXP);
+    rcpp_result_gen = Rcpp::wrap(mmd_perm_cpp(D_in, perms, n, m, distance_type, u_center));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dhsic_gram_cpp
+List dhsic_gram_cpp(List x_list, String type, SEXP bw, double expo, double scale_factor, Nullable<List> group_);
+RcppExport SEXP _KDist_dhsic_gram_cpp(SEXP x_listSEXP, SEXP typeSEXP, SEXP bwSEXP, SEXP expoSEXP, SEXP scale_factorSEXP, SEXP group_SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type x_list(x_listSEXP);
+    Rcpp::traits::input_parameter< String >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type bw(bwSEXP);
+    Rcpp::traits::input_parameter< double >::type expo(expoSEXP);
+    Rcpp::traits::input_parameter< double >::type scale_factor(scale_factorSEXP);
+    Rcpp::traits::input_parameter< Nullable<List> >::type group_(group_SEXP);
+    rcpp_result_gen = Rcpp::wrap(dhsic_gram_cpp(x_list, type, bw, expo, scale_factor, group_));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dhsic_perm_cpp
+NumericVector dhsic_perm_cpp(List M_list, IntegerMatrix perms, int n_perm);
+RcppExport SEXP _KDist_dhsic_perm_cpp(SEXP M_listSEXP, SEXP permsSEXP, SEXP n_permSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type M_list(M_listSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type perms(permsSEXP);
+    Rcpp::traits::input_parameter< int >::type n_perm(n_permSEXP);
+    rcpp_result_gen = Rcpp::wrap(dhsic_perm_cpp(M_list, perms, n_perm));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_KDist_bw_rcpp", (DL_FUNC) &_KDist_bw_rcpp, 3},
@@ -382,6 +442,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_KDist_chsic_recur_cpp", (DL_FUNC) &_KDist_chsic_recur_cpp, 3},
     {"_KDist_mdd_cpp", (DL_FUNC) &_KDist_mdd_cpp, 9},
     {"_KDist_mdd_bootstrap_cpp", (DL_FUNC) &_KDist_mdd_bootstrap_cpp, 4},
+    {"_KDist_hsic_perm_cpp", (DL_FUNC) &_KDist_hsic_perm_cpp, 5},
+    {"_KDist_mmd_perm_cpp", (DL_FUNC) &_KDist_mmd_perm_cpp, 6},
+    {"_KDist_dhsic_gram_cpp", (DL_FUNC) &_KDist_dhsic_gram_cpp, 6},
+    {"_KDist_dhsic_perm_cpp", (DL_FUNC) &_KDist_dhsic_perm_cpp, 3},
     {NULL, NULL, 0}
 };
 

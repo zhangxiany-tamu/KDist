@@ -1994,3 +1994,465 @@ NumericVector mdd_bootstrap_cpp(NumericMatrix Dx, NumericMatrix Dy, int n_boot,
 
   return bootstrap_results;
 }
+
+// ---------------------------------------------------------------------------
+// Permutation kernels
+//
+// These functions move the permutation loops of hsic_test / mmd_test /
+// dhsic_test from R into C++. Each kernel replicates the arithmetic of the
+// original R-level loop exactly (same formulas, same element traversal and
+// accumulation order, same accumulator types), so that for a given seed the
+// permutation statistics are bit-identical to the previous implementation.
+// Permutation indices are drawn in R (preserving the RNG stream) and passed
+// in 0-based.
+// ---------------------------------------------------------------------------
+
+// Permutation statistics for hsic_test: replicates hsic_cpp(Dx, Dy[p, p],
+// is_distance = TRUE) for each permutation p without materializing Dy[p, p].
+// All Dx-derived quantities are computed once; they are invariant across
+// permutations. Only raw permuted Dy entries enter the product loops, exactly
+// as in hsic_cpp.
+// [[Rcpp::export]]
+NumericVector hsic_perm_cpp(NumericMatrix Dx_in, NumericMatrix Dy_in,
+                            IntegerMatrix perms, bool u_center = false,
+                            bool zero_diag = false) {
+  int n = Dx_in.nrow();
+  int n_perm = perms.ncol();
+
+  if (Dx_in.ncol() != n || Dy_in.nrow() != n || Dy_in.ncol() != n) {
+    stop("Dx and Dy must be square matrices of the same size");
+  }
+  if (perms.nrow() != n) {
+    stop("perms must have one row per observation");
+  }
+
+  // Work on copies so caller matrices are never mutated
+  arma::mat Dx(Dx_in.begin(), n, n, true);
+  arma::mat Dy(Dy_in.begin(), n, n, true);
+
+  // Mirrors hsic_cpp: diagonals zeroed for kernel types with u_center = TRUE
+  if (zero_diag) {
+    for (int i = 0; i < n; i++) {
+      Dx(i, i) = 0.0;
+      Dy(i, i) = 0.0;
+    }
+  }
+
+  NumericVector results(n_perm);
+
+  // Centered Dx values are identical for every permutation (hsic_cpp
+  // recomputes the same quantities each call): hoist them once, stored
+  // ROW-major (CxRM[i*n + j] holds the centered value for logical (i, j))
+  // so that the accumulation below can traverse memory sequentially while
+  // keeping hsic_cpp's exact i-outer / j-inner summation order.
+  std::vector<double> CxRM((size_t)n * n);
+  if (u_center) {
+    arma::vec rowSums_x = arma::sum(Dx, 1);
+    double totalSum_x = arma::accu(Dx);
+    double rowDivisor = n - 2.0;
+    double totalDivisor = (n - 1.0) * (n - 2.0);
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < n; j++) {
+        CxRM[(size_t)i * n + j] = Dx(i, j) +
+          (totalSum_x / totalDivisor) -
+          (rowSums_x(i) / rowDivisor) -
+          (rowSums_x(j) / rowDivisor);
+      }
+    }
+  } else {
+    arma::rowvec means_x = arma::mean(Dx, 1).t();
+    double grand_mean_x = arma::mean(means_x);
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < n; j++) {
+        CxRM[(size_t)i * n + j] = Dx(i, j) - means_x(i) - means_x(j) + grand_mean_x;
+      }
+    }
+  }
+
+  // Distance/kernel matrices from KDist_matrix are exactly symmetric, which
+  // allows a cache-friendly fused gather-product: Dy[p, p](i, j) =
+  // Dy(p[j], p[i]) reads a single (cache-resident) source column of Dy per
+  // logical row i. For asymmetric user-supplied matrices (is_distance = TRUE)
+  // fall back to the direct definition. Either way the multiplied values and
+  // the accumulation order are exactly those of hsic_cpp on the materialized
+  // Dy[p, p].
+  bool dy_symmetric = true;
+  for (int j = 0; j < n && dy_symmetric; j++) {
+    for (int i = 0; i < j; i++) {
+      if (Dy(i, j) != Dy(j, i)) { dy_symmetric = false; break; }
+    }
+  }
+
+  for (int b = 0; b < n_perm; b++) {
+    const int* p = &perms(0, b);
+    const double* cx = CxRM.data();
+    double sum = 0.0;
+
+    if (u_center) {
+      if (dy_symmetric) {
+        for (int i = 0; i < n; i++) {
+          const double* src = Dy.colptr(p[i]);
+          const double* cxi = cx + (size_t)i * n;
+          for (int j = 0; j < n; j++) {
+            if (i != j) {  // Skip diagonal elements
+              sum += cxi[j] * src[p[j]];  // src[p[j]] == Dy(p[i], p[j])
+            }
+          }
+        }
+      } else {
+        for (int i = 0; i < n; i++) {
+          const double* cxi = cx + (size_t)i * n;
+          for (int j = 0; j < n; j++) {
+            if (i != j) {
+              sum += cxi[j] * Dy(p[i], p[j]);
+            }
+          }
+        }
+      }
+      results[b] = sum / n / (n - 3);
+    } else {
+      if (dy_symmetric) {
+        for (int i = 0; i < n; i++) {
+          const double* src = Dy.colptr(p[i]);
+          const double* cxi = cx + (size_t)i * n;
+          for (int j = 0; j < n; j++) {
+            sum += cxi[j] * src[p[j]];
+          }
+        }
+      } else {
+        for (int i = 0; i < n; i++) {
+          const double* cxi = cx + (size_t)i * n;
+          for (int j = 0; j < n; j++) {
+            sum += cxi[j] * Dy(p[i], p[j]);
+          }
+        }
+      }
+      results[b] = sum / (n * n);
+    }
+  }
+
+  return results;
+}
+
+// Permutation statistics for mmd_test: replicates
+// mmd(D[p, p], type, u_center, n, m) for each pre-drawn permutation p.
+// Block means/sums traverse elements in the same column-major order R uses
+// after materializing the blocks, with long-double accumulators and R's
+// two-pass mean correction.
+// [[Rcpp::export]]
+NumericVector mmd_perm_cpp(NumericMatrix D_in, IntegerMatrix perms,
+                           int n, int m, bool distance_type,
+                           bool u_center = false) {
+  int total_n = n + m;
+  int n_perm = perms.ncol();
+
+  if (n < 1 || m < 1 || D_in.nrow() != total_n || D_in.ncol() != total_n) {
+    stop("D must be a square (n + m) x (n + m) matrix");
+  }
+  if (perms.nrow() != total_n) {
+    stop("perms must have one row per observation");
+  }
+
+  arma::mat D(D_in.begin(), total_n, total_n, false);
+
+  NumericVector results(n_perm);
+
+  // Block sums traverse elements in R's column-major block order; the outer
+  // (column) index fixes a single source column of D per inner loop, which
+  // stays cache-resident, so the gather D(p[i], p[j]) is read directly
+  // without materializing D[p, p].
+  for (int b = 0; b < n_perm; b++) {
+    const int* p = &perms(0, b);
+
+    if (!u_center) {
+      // V-statistic: three block means via R's mean() algorithm
+      // (long-double accumulation in column-major block order, then a
+      // second correction pass; see R sources, summary.c).
+      long double sxx = 0.0L, syy = 0.0L, sxy = 0.0L;
+      for (int j = 0; j < n; j++)
+        for (int i = 0; i < n; i++)
+          sxx += D(p[i], p[j]);
+      for (int j = 0; j < m; j++)
+        for (int i = 0; i < m; i++)
+          syy += D(p[n + i], p[n + j]);
+      for (int j = 0; j < m; j++)
+        for (int i = 0; i < n; i++)
+          sxy += D(p[i], p[n + j]);
+
+      long double mxx = sxx / ((long double)n * n);
+      long double myy = syy / ((long double)m * m);
+      long double mxy = sxy / ((long double)n * m);
+
+      if (R_FINITE((double)mxx)) {
+        long double t = 0.0L;
+        for (int j = 0; j < n; j++)
+          for (int i = 0; i < n; i++)
+            t += (D(p[i], p[j]) - mxx);
+        mxx += t / ((long double)n * n);
+      }
+      if (R_FINITE((double)myy)) {
+        long double t = 0.0L;
+        for (int j = 0; j < m; j++)
+          for (int i = 0; i < m; i++)
+            t += (D(p[n + i], p[n + j]) - myy);
+        myy += t / ((long double)m * m);
+      }
+      if (R_FINITE((double)mxy)) {
+        long double t = 0.0L;
+        for (int j = 0; j < m; j++)
+          for (int i = 0; i < n; i++)
+            t += (D(p[i], p[n + j]) - mxy);
+        mxy += t / ((long double)n * m);
+      }
+
+      double dmxx = (double)mxx, dmyy = (double)myy, dmxy = (double)mxy;
+      if (distance_type) {
+        results[b] = 2 * dmxy - dmxx - dmyy;
+      } else {
+        results[b] = dmxx + dmyy - 2 * dmxy;
+      }
+    } else {
+      // U-statistic: sum() (single-pass long double) for the within blocks,
+      // mean() for the cross block. Kernel types have diag(Dxx) <- 0 and
+      // diag(Dyy) <- 0 before summing: skipping i == j is bit-identical to
+      // adding the zeroed entries in order.
+      long double sxx = 0.0L, syy = 0.0L, sxy = 0.0L;
+      if (distance_type) {
+        for (int j = 0; j < n; j++)
+          for (int i = 0; i < n; i++)
+            sxx += D(p[i], p[j]);
+        for (int j = 0; j < m; j++)
+          for (int i = 0; i < m; i++)
+            syy += D(p[n + i], p[n + j]);
+      } else {
+        for (int j = 0; j < n; j++)
+          for (int i = 0; i < n; i++)
+            if (i != j) sxx += D(p[i], p[j]);
+        for (int j = 0; j < m; j++)
+          for (int i = 0; i < m; i++)
+            if (i != j) syy += D(p[n + i], p[n + j]);
+      }
+      for (int j = 0; j < m; j++)
+        for (int i = 0; i < n; i++)
+          sxy += D(p[i], p[n + j]);
+
+      long double mxy = sxy / ((long double)n * m);
+      if (R_FINITE((double)mxy)) {
+        long double t = 0.0L;
+        for (int j = 0; j < m; j++)
+          for (int i = 0; i < n; i++)
+            t += (D(p[i], p[n + j]) - mxy);
+        mxy += t / ((long double)n * m);
+      }
+
+      double dsxx = (double)sxx, dsyy = (double)syy, dmxy = (double)mxy;
+      double nn = (double)n, mm = (double)m;
+      if (distance_type) {
+        results[b] = 2 * dmxy - dsxx / nn / (nn - 1) - dsyy / mm / (mm - 1);
+      } else {
+        results[b] = dsxx / nn / (nn - 1) + dsyy / mm / (mm - 1) - 2 * dmxy;
+      }
+    }
+  }
+
+  return results;
+}
+
+// Builds the list of transformed Gram matrices M_k exactly as
+// dhsic_fast_rcpp constructs them internally (including the 2n x 2n stacking
+// transform for distance-based types and per-matrix bandwidth/group
+// selection). Computing them once is valid because the Gram matrix of
+// row-permuted data equals the row/column-permuted Gram matrix, entry for
+// entry (each entry is recomputed from the same pair of rows), and the
+// median-heuristic bandwidth is rank-selected from the same multiset of
+// pairwise distances (invariant under row permutation for n <= 1000).
+// [[Rcpp::export]]
+List dhsic_gram_cpp(List x_list,
+                    String type = "gaussian",
+                    SEXP bw = R_NilValue,
+                    double expo = 1.0,
+                    double scale_factor = 0.5,
+                    Nullable<List> group_ = R_NilValue) {
+  int d = x_list.size();
+  NumericMatrix x1 = as<NumericMatrix>(x_list[0]);
+  int n = x1.nrow();
+
+  Environment KDist = Environment::namespace_env("KDist");
+  Function KDist_matrix = KDist["KDist_matrix"];
+
+  List group_list;
+  bool has_groups = false;
+  if (group_.isNotNull()) {
+    has_groups = true;
+    group_list = List(group_);
+    if (group_list.size() != d) {
+      stop("The 'group' parameter must be a list with one element per matrix in x_list");
+    }
+  }
+
+  bool has_vector_bw = false;
+  NumericVector bw_vector;
+  if (bw != R_NilValue && Rf_isVector(bw) && Rf_length(bw) > 1) {
+    has_vector_bw = true;
+    bw_vector = as<NumericVector>(bw);
+    if (bw_vector.size() != d) {
+      stop("Length of bandwidth vector must match the number of matrices");
+    }
+  }
+
+  bool is_distance_based = (type == "euclidean" || type == "e-dist" ||
+                            type == "g-dist" || type == "l-dist");
+
+  List M_list(d);
+
+  for (int k = 0; k < d; k++) {
+    SEXP bw_k = R_NilValue;
+    if (has_vector_bw) {
+      bw_k = wrap(bw_vector[k]);
+    } else {
+      bw_k = bw;
+    }
+
+    SEXP group_k = R_NilValue;
+    if (has_groups) {
+      group_k = group_list[k];
+    }
+
+    NumericMatrix xk = as<NumericMatrix>(x_list[k]);
+    NumericMatrix M;
+
+    if (is_distance_based) {
+      int pk = xk.ncol();
+      NumericMatrix yk(n, pk);
+      for (int i = 0; i < n; i++) {
+        for (int j = 0; j < pk; j++) {
+          yk(i, j) = 0.0;
+        }
+      }
+
+      NumericMatrix combined(2 * n, pk);
+      for (int i = 0; i < n; i++) {
+        for (int j = 0; j < pk; j++) {
+          combined(i, j) = xk(i, j);
+          combined(i + n, j) = yk(i, j);
+        }
+      }
+
+      NumericMatrix L = as<NumericMatrix>(KDist_matrix(combined, type, bw_k, expo, scale_factor, group_k));
+
+      M = NumericMatrix(n, n);
+      for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+          // M = L[1:n,(n+1):(2n)] + L[(n+1):(2n),1:n] - L[1:n,1:n]
+          M(i, j) = L(i, j + n) + L(i + n, j) - L(i, j);
+        }
+      }
+    } else {
+      M = as<NumericMatrix>(KDist_matrix(xk, type, bw_k, expo, scale_factor, group_k));
+    }
+
+    M_list[k] = M;
+  }
+
+  return M_list;
+}
+
+// Permutation statistics for dhsic_test: replicates dhsic_fast_rcpp applied
+// to (x1, x2[p2, ], ..., xd[pd, ]) using the precomputed Gram matrices from
+// dhsic_gram_cpp. The accumulation loops mirror dhsic_fast_rcpp's structure
+// exactly, with M_k[p, p](i, j) accessed as M_k(p[i], p[j]).
+// perms holds (d - 1) columns per permutation, in the original draw order
+// (variables 2..d within each iteration), 0-based.
+// [[Rcpp::export]]
+NumericVector dhsic_perm_cpp(List M_list, IntegerMatrix perms, int n_perm) {
+  int d = M_list.size();
+  if (d < 2) {
+    stop("M_list must contain at least two matrices");
+  }
+  NumericMatrix M1 = as<NumericMatrix>(M_list[0]);
+  int n = M1.nrow();
+
+  for (int k = 0; k < d; k++) {
+    NumericMatrix Mk = as<NumericMatrix>(M_list[k]);
+    if (Mk.nrow() != n || Mk.ncol() != n) {
+      stop("All matrices in M_list must be square and of the same size");
+    }
+  }
+  if (perms.nrow() != n || perms.ncol() != (d - 1) * n_perm) {
+    stop("perms must be n x ((d - 1) * n_perm)");
+  }
+
+  // First-matrix quantities, identical to what dhsic_fast_rcpp computes per
+  // call (the first variable is never permuted)
+  std::vector<double> R0(n, 0.0);
+  double S0 = 0.0;
+  for (int i = 0; i < n; i++) {
+    double row_sum = 0.0;
+    for (int j = 0; j < n; j++) {
+      row_sum += M1(i, j);
+    }
+    R0[i] = row_sum / n;
+    S0 += row_sum;
+  }
+  S0 = S0 / (n * n);
+
+  NumericVector results(n_perm);
+  // The Gram matrices and their running elementwise product are exactly
+  // symmetric, so the product buffer W can be held in ROW-major layout
+  // (W[i*n + j] = logical (i, j)): a plain copy of the column-major M1 data
+  // initializes it correctly, all loops below then access memory
+  // sequentially, and by symmetry Mk[p, p](i, j) = Mk(p[j], p[i]) reads a
+  // single cache-resident source column per logical row. Values and
+  // accumulation order match dhsic_fast_rcpp on the rebuilt permuted
+  // matrices exactly.
+  std::vector<double> W((size_t)n * n);
+  std::vector<double> R(n);
+
+  for (int b = 0; b < n_perm; b++) {
+    // Running product buffer starts as the first matrix
+    std::copy(M1.begin(), M1.end(), W.begin());
+    std::copy(R0.begin(), R0.end(), R.begin());
+    double S = S0;
+
+    for (int k = 1; k < d; k++) {
+      NumericMatrix Mk = as<NumericMatrix>(M_list[k]);
+      int perm_col = b * (d - 1) + (k - 1);
+      const int* p = &perms(0, perm_col);
+
+      double D_mean = 0.0;
+      for (int i = 0; i < n; i++) {
+        const double* src = &Mk(0, p[i]);
+        double* wi = &W[(size_t)i * n];
+        double row_sum = 0.0;
+        for (int j = 0; j < n; j++) {
+          double dij = src[p[j]];  // == Mk(p[i], p[j]) by symmetry
+          wi[j] *= dij;
+          row_sum += dij;
+        }
+        row_sum /= n;
+        D_mean += row_sum;
+        R[i] *= row_sum;
+      }
+      S *= (D_mean / n);
+    }
+
+    double Term1 = 0.0;
+    for (int i = 0; i < n; i++) {
+      const double* wi = &W[(size_t)i * n];
+      for (int j = 0; j < n; j++) {
+        Term1 += wi[j];
+      }
+    }
+    Term1 /= (n * n);
+    double Term2 = S;
+    double Term3 = 0.0;
+    for (int i = 0; i < n; i++) {
+      Term3 += R[i];
+    }
+    Term3 /= n;
+
+    results[b] = Term1 + Term2 - 2 * Term3;
+  }
+
+  return results;
+}

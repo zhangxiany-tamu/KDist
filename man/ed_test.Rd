@@ -28,7 +28,9 @@ U-centering provides an unbiased estimate by excluding diagonal terms in the dis
 
 \item{seed}{Random seed for reproducibility (default: NULL)}
 
-\item{num_cores}{Number of cores for parallel computing (default: 1)}
+\item{num_cores}{Retained for backward compatibility (default: 1). The
+permutation loop now runs in optimized C++, so this argument no
+longer affects the computation.}
 }
 \value{
 An object of class "ed_test" containing:

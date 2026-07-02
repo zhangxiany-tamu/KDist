@@ -16,7 +16,9 @@
 #' @param u_center Logical; use U-centering instead of V-centering (default: FALSE).
 #' @param n_perm Number of permutations to use for the test (default: 1000).
 #' @param seed Random seed for reproducibility (default: NULL).
-#' @param num_cores Number of cores for parallel computing (default: 1).
+#' @param num_cores Retained for backward compatibility (default: 1). The
+#'        permutation loop now runs in optimized C++, so this argument no
+#'        longer affects the computation.
 #'
 #' @return An object of class "mmd_test" containing:
 #'   \item{statistic}{MMD test statistic value}
@@ -101,6 +103,12 @@ mmd_test <- function(x, y, type = "gaussian", bw = NULL, expo = 1,
   if (!is.null(seed)) {
     set.seed(seed)
   }
+  # Validate the number of permutations
+  if (!is.numeric(n_perm) || length(n_perm) != 1 || !is.finite(n_perm) ||
+      n_perm < 1 || n_perm != floor(n_perm)) {
+    stop("'n_perm' must be a positive integer.")
+  }
+
 
   # Convert vectors to matrices if needed
   if (is.vector(x) && !is.matrix(x)) {
@@ -131,18 +139,11 @@ mmd_test <- function(x, y, type = "gaussian", bw = NULL, expo = 1,
     sample(total_n, total_n, replace = FALSE)
   })
 
-  # Define the function to run for each permutation
-  perm_function <- function(perm_indices) {
-    # Reorder the distance matrix according to the permutation
-    D_perm <- D[perm_indices, perm_indices]
-
-    # Calculate MMD for the permuted data
-    return(suppressMessages(mmd(x = D_perm, type = type, u_center = u_center, n = n, m = m)))
-  }
-
-  # Run permutations in parallel
-  perm_results <- parallel::mclapply(all_perm_indices, perm_function, mc.cores = num_cores)
-  perm_results <- unlist(perm_results)
+  # Compute all permutation statistics in C++; this replicates
+  # mmd(D[perm, perm], ...) exactly for each pre-drawn permutation
+  perm_matrix <- matrix(unlist(all_perm_indices), nrow = total_n)
+  distance_type <- type %in% c("euclidean", "e-dist", "l-dist", "g-dist")
+  perm_results <- mmd_perm_cpp(D, perm_matrix - 1L, n, m, distance_type, u_center)
 
   # Calculate p-value (proportion of permuted statistics >= observed)
   p.value <- mean(perm_results >= observed_mmd)
@@ -179,7 +180,9 @@ mmd_test <- function(x, y, type = "gaussian", bw = NULL, expo = 1,
 #'   U-centering provides an unbiased estimate of HSIC by excluding diagonal terms in the kernel matrices.
 #' @param n_perm Number of permutations to use for the test (default: 1000).
 #' @param seed Random seed for reproducibility (default: NULL).
-#' @param num_cores Number of cores for parallel computing (default: 1).
+#' @param num_cores Retained for backward compatibility (default: 1). The
+#'        permutation loop now runs in optimized C++, so this argument no
+#'        longer affects the computation.
 #' @param is_distance Logical; whether input matrices x and y are already distance/kernel matrices (default: FALSE).
 #'
 #' @return An object of class "hsic_test" containing:
@@ -331,6 +334,12 @@ hsic_test <- function(x, y, type = "gaussian", bw = NULL, expo = 1,
   if (!is.null(seed)) {
     set.seed(seed)
   }
+  # Validate the number of permutations
+  if (!is.numeric(n_perm) || length(n_perm) != 1 || !is.finite(n_perm) ||
+      n_perm < 1 || n_perm != floor(n_perm)) {
+    stop("'n_perm' must be a positive integer.")
+  }
+
 
   if (!is_distance) {
     # Convert vectors to matrices if needed
@@ -387,23 +396,17 @@ hsic_test <- function(x, y, type = "gaussian", bw = NULL, expo = 1,
     hsic(Dx, Dy, type = type, u_center = u_center, is_distance = TRUE)
   )
 
-  # Define the function to run for each permutation
-  perm_function <- function(i) {
-    # Generate a random permutation of indices
-    perm_indices <- sample(n, n, replace = FALSE)
-
-    # Reorder the second distance matrix according to the permutation
-    Dy_perm <- Dy[perm_indices, perm_indices]
-
-    # Calculate HSIC for the permuted data
-    return(suppressMessages(
-      hsic(Dx, Dy_perm, type = type, u_center = u_center, is_distance = TRUE)
-    ))
-  }
-
-  # Run permutations in parallel
-  perm_results <- parallel::mclapply(1:n_perm, function(i) perm_function(i), mc.cores = num_cores)
-  perm_results <- unlist(perm_results)
+  # Draw all permutations in the master process (same RNG sequence as
+  # drawing one per iteration), then compute all permutation statistics in
+  # C++; this replicates hsic(Dx, Dy[perm, perm], is_distance = TRUE)
+  # exactly for each permutation. The matrix() wrap keeps the n x n_perm
+  # shape even when n = 1 (vapply drops it to a vector).
+  perm_matrix <- matrix(vapply(seq_len(n_perm),
+                               function(i) sample(n, n, replace = FALSE),
+                               integer(n)),
+                        nrow = n)
+  zero_diag <- u_center && type %in% c("gaussian", "laplacian", "polynomial")
+  perm_results <- hsic_perm_cpp(Dx, Dy, perm_matrix - 1L, u_center, zero_diag)
 
   # Calculate p-value (proportion of permuted statistics >= observed)
   p.value <- mean(perm_results >= observed_hsic)
@@ -432,7 +435,9 @@ hsic_test <- function(x, y, type = "gaussian", bw = NULL, expo = 1,
 #'   U-centering provides an unbiased estimate by excluding diagonal terms in the distance matrices.
 #' @param n_perm Number of permutations to use for the test (default: 1000)
 #' @param seed Random seed for reproducibility (default: NULL)
-#' @param num_cores Number of cores for parallel computing (default: 1)
+#' @param num_cores Retained for backward compatibility (default: 1). The
+#'        permutation loop now runs in optimized C++, so this argument no
+#'        longer affects the computation.
 #'
 #' @return An object of class "ed_test" containing:
 #'   \item{statistic}{Energy distance test statistic value}
@@ -560,7 +565,9 @@ ed_test <- function(x, y, a = 1, u_center = FALSE, n_perm = 1000,
 #'   U-centering provides an unbiased estimate by excluding diagonal terms in the distance matrices.
 #' @param n_perm Number of permutations to use for the test (default: 1000)
 #' @param seed Random seed for reproducibility (default: NULL)
-#' @param num_cores Number of cores for parallel computing (default: 1)
+#' @param num_cores Retained for backward compatibility (default: 1). The
+#'        permutation loop now runs in optimized C++, so this argument no
+#'        longer affects the computation.
 #' @param is_distance Logical; whether input matrices x and y are already distance matrices (default: FALSE)
 #'
 #' @return An object of class "dcov_test" containing:
@@ -710,7 +717,9 @@ dcov_test <- function(x, y, a = 1, u_center = FALSE, n_perm = 1000,
 #'   distance calculations in "e-dist", "g-dist", or "l-dist".
 #' @param n_perm Number of permutations to use for the test (default: 1000).
 #' @param seed Random seed for reproducibility (default: NULL).
-#' @param num_cores Number of cores for parallel computing (default: 1).
+#' @param num_cores Retained for backward compatibility (default: 1). The
+#'        permutation loop now runs in optimized C++, so this argument no
+#'        longer affects the computation.
 #'
 #' @return An object of class "dhsic_test" containing:
 #'   \item{statistic}{dHSIC test statistic value}
@@ -841,6 +850,12 @@ dhsic_test <- function(x, type = "gaussian", bw = NULL, expo = 1,
   if (!is.null(seed)) {
     set.seed(seed)
   }
+  # Validate the number of permutations
+  if (!is.numeric(n_perm) || length(n_perm) != 1 || !is.finite(n_perm) ||
+      n_perm < 1 || n_perm != floor(n_perm)) {
+    stop("'n_perm' must be a positive integer.")
+  }
+
 
   # Validate inputs
   if (!is.list(x)) {
@@ -875,25 +890,52 @@ dhsic_test <- function(x, type = "gaussian", bw = NULL, expo = 1,
   observed_dhsic <- dhsic(x_matrices, type = type, bw = bw, expo = expo,
                          scale_factor = scale_factor, group = group)
 
-  # Define the function to run for each permutation
-  perm_function <- function(i) {
-    # Create a permuted version of the list
-    x_perm <- x_matrices
+  # Automatic bandwidths are estimated from at most the first 1000 rows
+  # (bw_rcpp subsampling), so beyond that size a row permutation changes the
+  # bandwidth and Gram matrices computed once would not reproduce the
+  # rebuild-per-permutation results exactly. In that regime keep the original
+  # rebuild loop; otherwise evaluate all permutations in C++ from Gram
+  # matrices computed once — valid because the Gram matrix of row-permuted
+  # data equals the row/column-permuted Gram matrix, and the median-heuristic
+  # bandwidth is permutation-invariant when all rows enter the estimate
+  # (g-dist/l-dist estimate it on the 2n-row stacked matrix).
+  # (For g-dist/l-dist the bandwidth is estimated on the 2n-row stacked
+  # matrix, but for n <= 1000 its first 1000 rows contain every data row plus
+  # a fixed number of zero rows, so the estimate is still permutation-
+  # invariant; sensitivity starts at n > 1000 for all four types.)
+  bw_subsample_sensitive <- is.null(bw) &&
+    type %in% c("gaussian", "laplacian", "g-dist", "l-dist") && n > 1000
 
-    # Permute all matrices except the first one
-    for (j in 2:d) {
-      perm_indices <- sample(n, n, replace = FALSE)
-      x_perm[[j]] <- x_matrices[[j]][perm_indices, , drop = FALSE]
+  if (bw_subsample_sensitive) {
+    perm_function <- function(i) {
+      # Create a permuted version of the list
+      x_perm <- x_matrices
+
+      # Permute all matrices except the first one
+      for (j in 2:d) {
+        perm_indices <- sample(n, n, replace = FALSE)
+        x_perm[[j]] <- x_matrices[[j]][perm_indices, , drop = FALSE]
+      }
+
+      # Calculate dHSIC for the permuted data
+      dhsic(x_perm, type = type, bw = bw, expo = expo,
+            scale_factor = scale_factor, group = group)
     }
-
-    # Calculate dHSIC for the permuted data
-    return(dhsic(x_perm, type = type, bw = bw, expo = expo,
-                scale_factor = scale_factor, group = group))
+    perm_results <- unlist(lapply(seq_len(n_perm), perm_function))
+  } else {
+    # Draw all permutations in the master process in the original order
+    # (variables 2..d within each iteration)
+    perm_matrix <- matrix(0L, nrow = n, ncol = (d - 1L) * n_perm)
+    col_idx <- 0L
+    for (i in seq_len(n_perm)) {
+      for (j in 2:d) {
+        col_idx <- col_idx + 1L
+        perm_matrix[, col_idx] <- sample(n, n, replace = FALSE)
+      }
+    }
+    M_list <- dhsic_gram_cpp(x_matrices, type, bw, expo, scale_factor, group)
+    perm_results <- dhsic_perm_cpp(M_list, perm_matrix - 1L, n_perm)
   }
-
-  # Run permutations in parallel
-  perm_results <- parallel::mclapply(1:n_perm, function(i) perm_function(i), mc.cores = num_cores)
-  perm_results <- unlist(perm_results)
 
   # Calculate p-value (proportion of permuted statistics >= observed)
   p.value <- mean(perm_results >= observed_dhsic)

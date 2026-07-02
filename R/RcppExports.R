@@ -97,3 +97,19 @@ mdd_bootstrap_cpp <- function(Dx, Dy, n_boot, boot_type = "normal") {
     .Call(`_KDist_mdd_bootstrap_cpp`, Dx, Dy, n_boot, boot_type)
 }
 
+hsic_perm_cpp <- function(Dx_in, Dy_in, perms, u_center = FALSE, zero_diag = FALSE) {
+    .Call(`_KDist_hsic_perm_cpp`, Dx_in, Dy_in, perms, u_center, zero_diag)
+}
+
+mmd_perm_cpp <- function(D_in, perms, n, m, distance_type, u_center = FALSE) {
+    .Call(`_KDist_mmd_perm_cpp`, D_in, perms, n, m, distance_type, u_center)
+}
+
+dhsic_gram_cpp <- function(x_list, type = "gaussian", bw = NULL, expo = 1.0, scale_factor = 0.5, group_ = NULL) {
+    .Call(`_KDist_dhsic_gram_cpp`, x_list, type, bw, expo, scale_factor, group_)
+}
+
+dhsic_perm_cpp <- function(M_list, perms, n_perm) {
+    .Call(`_KDist_dhsic_perm_cpp`, M_list, perms, n_perm)
+}
+
