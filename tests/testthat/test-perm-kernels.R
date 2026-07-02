@@ -30,10 +30,13 @@ test_that("mmd_test permutation distribution is reproducible and pinned", {
   b <- matrix(rnorm(40 * 2, 0.5), 40, 2)
 
   r <- mmd_test(a, b, type = "euclidean", u_center = TRUE, n_perm = 50, seed = 4)
-  expect_equal(r$statistic, 0.283998443457406, tolerance = 1e-14)
+  # mmd block means accumulate in long double (replicating R's mean()), whose
+  # width is platform-dependent (80-bit x86, 64-bit arm), so these pins need a
+  # looser tolerance than the plain-double hsic/dhsic pins
+  expect_equal(r$statistic, 0.283998443457406, tolerance = 1e-12)
   expect_identical(r$p.value, 0)
-  expect_equal(r$permutation_values[1], 0.00562114798914903, tolerance = 1e-14)
-  expect_equal(r$permutation_values[50], -0.00751879917509735, tolerance = 1e-14)
+  expect_equal(r$permutation_values[1], 0.00562114798914903, tolerance = 1e-12)
+  expect_equal(r$permutation_values[50], -0.00751879917509735, tolerance = 1e-12)
 
   r2 <- mmd_test(a, b, type = "euclidean", u_center = TRUE, n_perm = 50, seed = 4)
   expect_identical(r$permutation_values, r2$permutation_values)
