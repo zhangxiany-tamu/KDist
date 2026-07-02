@@ -446,10 +446,15 @@ kcid <- function(formula, data, type = c("gaussian", "gaussian", "gaussian"),
 #' @param sampling_method Method for resampling: "bootstrap" or "knn" (default: "bootstrap").
 #' @param B Number of bootstrap or resampling iterations (default: 299).
 #' @param bandwidth Controls the bandwidth for X smoothing:
-#'        - NULL (default): automatic selection
+#'        - NULL (default): automatic selection (rule of thumb)
 #'        - "undersmoothing": use undersmoothing
-#'        - A numeric value: use this value as a multiplier for automatic bandwidth
-#'        - A function: specify custom bandwidth function
+#'        - A positive number: multiplier applied to the automatic bandwidth
+#'        - A function of the form `function(n, p, nu, A)` returning a vector of
+#'          per-column bandwidths, where `n` is the sample size, `p` the number of
+#'          columns of X, `nu` the smoothing-kernel order, and `A` the per-column
+#'          scale `pmin(IQR/1.34, sd)`
+#'        - A list of two vectors: fixed bandwidths for sample 1 and sample 2
+#'          (each of length 1 or `ncol(X)`)
 #' @param bandwidth_adjust Adjustment factor for automatic bandwidth (default: 0.1).
 #' @param knn_k Number of nearest neighbors when sampling_method="knn" (default: 5).
 #' @param num_cores Number of cores for parallel computation (default: 1).
@@ -589,15 +594,33 @@ tcdt <- function(formula, data, x0 = NULL, stat = c("cmmd", "cged"),
   Y2 <- extract_data(y2_expr, data)
   X2 <- extract_data(x2_expr, data)
 
-  # Set up parameters for .tcdt_impl
+  # Map the user-facing `bandwidth` argument onto .tcdt_impl's parameters.
+  # Type checks must precede any string comparison: `==` on a closure errors,
+  # and on a list yields a length > 1 condition.
+  bw_multiplier <- 1
   if (is.null(bandwidth)) {
     h <- NULL
-  } else if (is.numeric(bandwidth)) {
+  } else if (is.function(bandwidth)) {
     h <- bandwidth
-  } else if (bandwidth == "undersmoothing") {
+  } else if (is.list(bandwidth)) {
+    if (length(bandwidth) != 2) {
+      stop("If 'bandwidth' is a list, it must contain two vectors: ",
+           "smoothing bandwidths for sample 1 and sample 2.")
+    }
+    h <- bandwidth
+  } else if (is.numeric(bandwidth)) {
+    if (length(bandwidth) != 1 || !is.finite(bandwidth) || bandwidth <= 0) {
+      stop("A numeric 'bandwidth' must be a single positive value, used as a ",
+           "multiplier for the automatic bandwidth.")
+    }
+    h <- NULL
+    bw_multiplier <- bandwidth
+  } else if (is.character(bandwidth) && length(bandwidth) == 1 &&
+             bandwidth == "undersmoothing") {
     h <- "undersmoothing"
   } else {
-    h <- NULL
+    stop("Invalid 'bandwidth'. Use NULL (automatic), \"undersmoothing\", ",
+         "a positive multiplier, a function(n, p, nu, A), or a list of two vectors.")
   }
 
   # Check if x0 is provided and has correct dimensions
@@ -621,7 +644,7 @@ tcdt <- function(formula, data, x0 = NULL, stat = c("cmmd", "cged"),
   result <- .tcdt_impl(
     X1 = X1, X2 = X2, Y1 = Y1, Y2 = Y2,
     x0 = x0, B = B,
-    h = h, adj_bw = bandwidth_adjust,
+    h = h, adj_bw = bandwidth_adjust, const_factor = bw_multiplier,
     kern_smooth = smooth_kernel,
     stat = stat, kern_mmd = kern_mmd,
     sampling_method = sampling_method,
@@ -781,7 +804,25 @@ tcdt <- function(formula, data, x0 = NULL, stat = c("cmmd", "cged"),
     apply(X = X2, MARGIN = 2, FUN = sd)
   )
 
-  if (is.null(h) || h == "undersmoothing") {
+  # Bandwidths must be positive, finite, and one per column of X
+  # (indexed h[j] below); scalars are recycled across columns.
+  validate_bandwidth <- function(v, label) {
+    if (!is.numeric(v) || length(v) == 0 || any(!is.finite(v)) || any(v <= 0)) {
+      stop("'", label, "' must be a vector of positive finite bandwidths.")
+    }
+    if (length(v) == 1) {
+      return(rep(v, p))
+    }
+    if (length(v) != p) {
+      stop("'", label, "' must have length 1 or ", p,
+           " (one bandwidth per column of X), not ", length(v), ".")
+    }
+    v
+  }
+
+  # Type checks precede string comparison: `==` errors on closures and
+  # produces a length > 1 condition on lists.
+  if (is.null(h) || (is.character(h) && length(h) == 1 && h == "undersmoothing")) {
     if (problem == "global") {
       h1 <- const_factor * n1^(-1 / (p / 2 + nu - adj_bw)) * A1
       h2 <- const_factor * n2^(-1 / (p / 2 + nu - adj_bw)) * A2
@@ -790,16 +831,14 @@ tcdt <- function(formula, data, x0 = NULL, stat = c("cmmd", "cged"),
       h2 <- const_factor * n2^(-1 / (p + nu - adj_bw)) * A2
     }
   } else if (is.function(h)) {
-    h1 <- h(n1, p, nu, A1)
-    h2 <- h(n2, p, nu, A2)
+    h1 <- validate_bandwidth(h(n1, p, nu, A1), "h(n1, p, nu, A1)")
+    h2 <- validate_bandwidth(h(n2, p, nu, A2), "h(n2, p, nu, A2)")
+  } else if (is.list(h) && length(h) == 2) {
+    h1 <- validate_bandwidth(h[[1]], "h[[1]]")
+    h2 <- validate_bandwidth(h[[2]], "h[[2]]")
   } else {
-    # Using provided bandwidth
-    if (is.list(h) && length(h) == 2) {
-      h1 <- h[[1]]
-      h2 <- h[[2]]
-    } else {
-      stop("If h is provided, it should be a list of two vectors with appropriate lengths.")
-    }
+    stop("If h is provided, it should be \"undersmoothing\", a function(n, p, nu, A), ",
+         "or a list of two vectors with appropriate lengths.")
   }
   list_return$h <- cbind(h1, h2)
 
@@ -846,26 +885,28 @@ tcdt <- function(formula, data, x0 = NULL, stat = c("cmmd", "cged"),
       # Kernel for local bootstrap
       G_b <- kernel_for_smooth("gaussian", nu = 2)
 
-      # Kernel matrix used for local bootstrap
-      if (is.null(h_boot) || h_boot == "thumb") {
+      # Kernel matrix used for local bootstrap. As above, type checks must
+      # precede string comparison.
+      is_h_boot_option <- function(value) {
+        is.character(h_boot) && length(h_boot) == 1 && h_boot == value
+      }
+      if (is.null(h_boot) || is_h_boot_option("thumb")) {
         h1_b <- const_factor_boot * n1^(-1 / (p + 4 + adj_bw_boot)) * A1
         h2_b <- const_factor_boot * n2^(-1 / (p + 4 + adj_bw_boot)) * A2
 
-      } else if (h_boot == "undersmoothing") {
+      } else if (is_h_boot_option("undersmoothing")) {
         h1_b <- const_factor_boot * n1^(-1 / (p / 2 + 2)) * A1
         h2_b <- const_factor_boot * n2^(-1 / (p / 2 + 2)) * A2
 
       } else if (is.function(h_boot)) {
-        h1_b <- h_boot(n1, p, nu, A1)
-        h2_b <- h_boot(n2, p, nu, A2)
+        h1_b <- validate_bandwidth(h_boot(n1, p, nu, A1), "h_boot(n1, p, nu, A1)")
+        h2_b <- validate_bandwidth(h_boot(n2, p, nu, A2), "h_boot(n2, p, nu, A2)")
+      } else if (is.list(h_boot) && length(h_boot) == 2) {
+        h1_b <- validate_bandwidth(h_boot[[1]], "h_boot[[1]]")
+        h2_b <- validate_bandwidth(h_boot[[2]], "h_boot[[2]]")
       } else {
-        # Using provided bootstrap bandwidth
-        if (is.list(h_boot) && length(h_boot) == 2) {
-          h1_b <- h_boot[[1]]
-          h2_b <- h_boot[[2]]
-        } else {
-          stop("If h_boot is provided, it should be a list of two vectors with appropriate lengths.")
-        }
+        stop("If h_boot is provided, it should be \"thumb\", \"undersmoothing\", ",
+             "a function(n, p, nu, A), or a list of two vectors with appropriate lengths.")
       }
       list_return$h_b <- cbind(h1_b, h2_b)
 

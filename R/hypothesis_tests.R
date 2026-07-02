@@ -1299,8 +1299,6 @@ hd_two_test <- function(x, y, type = "e-dist", bw = NULL, expo = 1, scale_factor
   # Compute denominator and final statistic
   Den <- sqrt(scalar_den * Snm)
 
-  # There seems to be a variable 'ed_all' used but not defined earlier
-  # Assuming it should be mmd_val based on context
   stat <- mmd_val / Den
 
   # Calculate p-value
@@ -1654,33 +1652,40 @@ mdd_test <- function(x, y, type = "euclidean", bw = NULL, expo = 1,
   } else {
     # Otherwise, use mclapply for parallel processing
 
-    # Divide the bootstrap iterations among cores
-    n_boot_per_core <- ceiling(n_boot / num_cores)
+    # Divide the n_boot iterations across cores: chunk sizes sum to n_boot,
+    # differ by at most one, and empty chunks are dropped (num_cores may
+    # exceed n_boot)
+    chunk_sizes <- rep(n_boot %/% num_cores, num_cores)
+    n_extra <- n_boot %% num_cores
+    if (n_extra > 0) {
+      chunk_sizes[seq_len(n_extra)] <- chunk_sizes[seq_len(n_extra)] + 1
+    }
+    chunk_sizes <- chunk_sizes[chunk_sizes > 0]
 
     # Create a wrapper function for parallel calculation
     boot_wrapper <- function(i) {
-      # Calculate the actual number of bootstrap iterations for this core
-      actual_n_boot <- min(n_boot_per_core, n_boot - (i-1) * n_boot_per_core)
-
-      # If seed is provided, make sure each core gets a different but reproducible seed
+      # mdd_bootstrap_cpp draws from R's RNG, so seeding inside the forked
+      # worker makes the parallel bootstrap reproducible for a given num_cores
       if (!is.null(seed)) {
-        core_seed <- seed + i * 1000
-      } else {
-        core_seed <- NULL
+        set.seed(seed + i * 1000)
       }
 
       # Call the C++ function for this chunk of bootstrap iterations
-      return(mdd_bootstrap_cpp(Dx, Dy, actual_n_boot, boot_type))
+      return(mdd_bootstrap_cpp(Dx, Dy, chunk_sizes[i], boot_type))
     }
 
     # Run bootstrap in parallel
-    results_list <- parallel::mclapply(1:num_cores, boot_wrapper, mc.cores = num_cores)
+    results_list <- parallel::mclapply(seq_along(chunk_sizes), boot_wrapper,
+                                       mc.cores = num_cores)
 
     # Combine results from all cores
     wb_results <- do.call(c, results_list)
 
-    # Ensure we have the correct number of bootstrap samples
-    wb_results <- wb_results[1:n_boot]
+    # mclapply returns error objects rather than raising errors from workers
+    if (!is.numeric(wb_results) || length(wb_results) != n_boot) {
+      stop("Parallel wild bootstrap failed on one or more cores; ",
+           "try running with num_cores = 1.")
+    }
   }
 
   # Calculate p-value (proportion of bootstrap statistics >= observed in absolute value)

@@ -115,8 +115,9 @@ dmanova <- function(formula, data = NULL, type = "euclidean", bw = NULL, expo = 
     contrasts <- list(unordered = "contr.sum", ordered = "contr.poly")
   }
 
-  # Set contrasts
+  # Set contrasts; restore on every exit path, including errors
   op.c <- options()$contrasts
+  on.exit(options(contrasts = op.c), add = TRUE)
   options(contrasts = c(contrasts$unordered, contrasts$ordered))
 
   # Parse the formula
@@ -286,9 +287,6 @@ dmanova <- function(formula, data = NULL, type = "euclidean", bw = NULL, expo = 
   class(tab) <- c("anova", class(tab))
   attr(tab, "heading") <- c("Distance-based MANOVA testing the dependence of response on predictors after adjusting for covariates\n")
 
-  # Reset contrasts option
-  options(contrasts = op.c)
-
   # Add information about the model for diagnostics
   model_info <- list(
     X_dims = ncol(XZ) - ncol(Z),
@@ -432,9 +430,11 @@ dmanova <- function(formula, data = NULL, type = "euclidean", bw = NULL, expo = 
 #' print(result5$aov.tab)
 #'
 #' # Example 6: Using parallel processing for permutation tests
+#' \dontrun{
 #' result6 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
 #'                    parallel = TRUE, n_perm = 499, num_cores = 2)
 #' print(result6$aov.tab)
+#' }
 #'
 #' @seealso
 #' \code{\link{dmanova}} for the standard distance-based MANOVA approach.
@@ -464,8 +464,9 @@ dmanova2 <- function(formula, data = NULL,
     contrasts <- list(unordered = "contr.sum", ordered = "contr.poly")
   }
 
-  # Set contrasts
+  # Set contrasts; restore on every exit path, including errors
   op.c <- options()$contrasts
+  on.exit(options(contrasts = op.c), add = TRUE)
   options(contrasts = c(contrasts$unordered, contrasts$ordered))
 
   # Parse the formula
@@ -641,9 +642,6 @@ dmanova2 <- function(formula, data = NULL,
   colnames(tab)[ncol(tab)] <- "Pr(>F)"
   class(tab) <- c("anova", class(tab))
   attr(tab, "heading") <- c("Fully Distance-based MANOVA testing the dependence of response on predictors after adjusting for covariates\n")
-
-  # Reset contrasts option
-  options(contrasts = op.c)
 
   # Add information about the model for diagnostics
   model_info <- list(

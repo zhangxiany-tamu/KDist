@@ -1,25 +1,3 @@
-#' Retrieve a statistic from the internal asymptotic_stats list
-#'
-#' This function retrieves a statistic from the internal dataset `asymptotic_stats`
-#' by a given key.
-#'
-#' @param key A character string specifying the name of the statistic to retrieve.
-#'
-#' @return The corresponding statistic (could be a number, list, etc.).
-#'
-#' @examples
-#' \dontrun{
-#' my_function("mean_stat")
-#' }
-#'
-#' @export
-my_function <- function(key) {
-  if (!key %in% names(asymptotic_stats)) {
-    stop("Invalid key.")
-  }
-  return(asymptotic_stats[[key]])
-}
-
 #' Single Change-Point Detection Using Kernel and Distance-Based Metrics
 #'
 #' @description

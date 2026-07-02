@@ -148,9 +148,11 @@ result5 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
 print(result5$aov.tab)
 
 # Example 6: Using parallel processing for permutation tests
+\dontrun{
 result6 <- dmanova2(Y ~ X1 + X2 | Z1 + Z2, data = df,
                    parallel = TRUE, n_perm = 499, num_cores = 2)
 print(result6$aov.tab)
+}
 
 }
 \seealso{

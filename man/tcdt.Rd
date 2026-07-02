@@ -44,10 +44,15 @@ or "uniform" (default: "gaussian").}
 \item{B}{Number of bootstrap or resampling iterations (default: 299).}
 
 \item{bandwidth}{Controls the bandwidth for X smoothing:
-- NULL (default): automatic selection
+- NULL (default): automatic selection (rule of thumb)
 - "undersmoothing": use undersmoothing
-- A numeric value: use this value as a multiplier for automatic bandwidth
-- A function: specify custom bandwidth function}
+- A positive number: multiplier applied to the automatic bandwidth
+- A function of the form \code{function(n, p, nu, A)} returning a vector of
+per-column bandwidths, where \code{n} is the sample size, \code{p} the number of
+columns of X, \code{nu} the smoothing-kernel order, and \code{A} the per-column
+scale \code{pmin(IQR/1.34, sd)}
+- A list of two vectors: fixed bandwidths for sample 1 and sample 2
+(each of length 1 or \code{ncol(X)})}
 
 \item{bandwidth_adjust}{Adjustment factor for automatic bandwidth (default: 0.1).}
 
