@@ -19,47 +19,49 @@
 #' \code{install.packages("fda")}.
 #'
 #' @examples
-#' library(fda)
+#' if (requireNamespace("fda", quietly = TRUE)) {
+#'   library(fda)
 #'
-#' # Create sample data with 50 curves
-#' t_points <- seq(0, 1, length.out = 101)
-#' n_curves <- 50
-#' curves <- matrix(0, n_curves, length(t_points))
+#'   # Create sample data with 50 curves
+#'   t_points <- seq(0, 1, length.out = 101)
+#'   n_curves <- 50
+#'   curves <- matrix(0, n_curves, length(t_points))
 #'
-#' # Generate 50 different curves
-#' for (i in 1:n_curves) {
-#'   # Create curves with different frequencies and phases
-#'   freq <- 1 + (i %% 5)
-#'   phase <- (i %% 10) * pi/10
-#'   amplitude <- 0.8 + 0.4 * (i %% 3) / 3
-#'   curves[i,] <- amplitude * sin(2*pi*freq*t_points + phase)
+#'   # Generate 50 different curves
+#'   for (i in 1:n_curves) {
+#'     # Create curves with different frequencies and phases
+#'     freq <- 1 + (i %% 5)
+#'     phase <- (i %% 10) * pi/10
+#'     amplitude <- 0.8 + 0.4 * (i %% 3) / 3
+#'     curves[i,] <- amplitude * sin(2*pi*freq*t_points + phase)
+#'   }
+#'
+#'   # Create functional data object
+#'   basis <- create.bspline.basis(c(0, 1), 23)
+#'   fd_obj <- Data2fd(t_points, t(curves), basis)
+#'
+#'   # Calculate different types of matrices
+#'
+#'   # 1. Standard L2 distance matrix
+#'   dist_mat_L2 <- KDist_fda_matrix(fd_obj, type = "L2", output = "distance")
+#'
+#'   # 2. L2 distance of first derivatives
+#'   dist_mat_deriv <- KDist_fda_matrix(fd_obj, type = "L2-deriv",
+#'                                      deriv_order = 1, output = "distance")
+#'
+#'   # 3. Gaussian kernel based on weighted combination of function and derivatives
+#'   kernel_mat <- KDist_fda_matrix(fd_obj, type = "L2-deriv-weighted",
+#'                                 output = "gaussian", weight_deriv = 0.3)
+#'
+#'   # 4. Laplacian kernel with custom bandwidth
+#'   laplacian_mat <- KDist_fda_matrix(fd_obj, type = "L2",
+#'                                    output = "laplacian", bw = 0.5)
+#'
+#'   # Visualize the kernel matrices
+#'   par(mfrow=c(1,2))
+#'   image(kernel_mat, main="Gaussian Kernel", xlab="Curve Index", ylab="Curve Index")
+#'   image(laplacian_mat, main="Laplacian Kernel", xlab="Curve Index", ylab="Curve Index")
 #' }
-#'
-#' # Create functional data object
-#' basis <- create.bspline.basis(c(0, 1), 23)
-#' fd_obj <- Data2fd(t_points, t(curves), basis)
-#'
-#' # Calculate different types of matrices
-#'
-#' # 1. Standard L2 distance matrix
-#' dist_mat_L2 <- KDist_fda_matrix(fd_obj, type = "L2", output = "distance")
-#'
-#' # 2. L2 distance of first derivatives
-#' dist_mat_deriv <- KDist_fda_matrix(fd_obj, type = "L2-deriv",
-#'                                    deriv_order = 1, output = "distance")
-#'
-#' # 3. Gaussian kernel based on weighted combination of function and derivatives
-#' kernel_mat <- KDist_fda_matrix(fd_obj, type = "L2-deriv-weighted",
-#'                               output = "gaussian", weight_deriv = 0.3)
-#'
-#' # 4. Laplacian kernel with custom bandwidth
-#' laplacian_mat <- KDist_fda_matrix(fd_obj, type = "L2",
-#'                                  output = "laplacian", bw = 0.5)
-#'
-#' # Visualize the kernel matrices
-#' par(mfrow=c(1,2))
-#' image(kernel_mat, main="Gaussian Kernel", xlab="Curve Index", ylab="Curve Index")
-#' image(laplacian_mat, main="Laplacian Kernel", xlab="Curve Index", ylab="Curve Index")
 #'
 #' @export
 KDist_fda_matrix <- function(fd_obj, type = "L2", output = "distance", deriv_order = 1,

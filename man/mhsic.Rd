@@ -84,6 +84,7 @@ test_dep <- mhsic(x_dep, type = "euclidean")
 print(test_dep)
 
 # Example 3: Using different kernels with high-dimensional data
+\dontrun{
 p_moderate <- 300  # Moderately high dimensionality
 x_mod <- matrix(rnorm(n * p_moderate), ncol = p_moderate)
 # Make first 20 variables dependent
@@ -99,6 +100,7 @@ test_laplacian <- mhsic(x_mod, type = "laplacian", num_cores = 2)
 cat("Distance covariance p-value:", test_dCov$p.value, "\n")
 cat("Gaussian kernel p-value:", test_gaussian$p.value, "\n")
 cat("Laplacian kernel p-value:", test_laplacian$p.value, "\n")
+}
 
 }
 \references{

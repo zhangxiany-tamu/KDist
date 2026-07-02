@@ -8,8 +8,9 @@ Authors@R:
            email = "zhangxiany@stat.tamu.edu")
 Description: This package offers a comprehensive toolkit for kernel and distance-based methods in statistical inference. It implements various statistical inference procedures based on generalized energy distance, maximum mean discrepancy (MMD), generalized distance covariance, and the Hilbert-Schmidt Independence Criterion (HSIC). It also features dHSIC, high-order HSIC, joint HSIC, kernel/distance-based MANOVA, and high-dimensional independence/two-sample t-tests. The toolkit also includes methods for conditional independence/two-sample testing, as well as change-point detection.
 License: MIT + file LICENSE
+URL: https://github.com/zhangxiany-tamu/KDist
+BugReports: https://github.com/zhangxiany-tamu/KDist/issues
 Encoding: UTF-8
-LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports: 

@@ -1,6 +1,9 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.Rhistory$
 ^\.github$
+^\.gitignore$
+^\.claude$
 ^LICENSE\.md$
 ^README\.Rmd$
 ^data-raw$
@@ -11,9 +14,12 @@
 ^cran-comments\.md$
 ^CRAN-RELEASE$
 ^CRAN-SUBMISSION$
-^\.github$
-^\.gitignore$
 ^codecov\.yml$
 ^vignettes/articles$
 ^\.lintr$
 ^install\.R$
+^images$
+\.DS_Store$
+^src/.*\.o$
+^src/.*\.so$
+^src/.*\.dll$

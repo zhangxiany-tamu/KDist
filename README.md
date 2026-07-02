@@ -248,7 +248,7 @@ R package version 0.1.0.
 
 ## 📄 License
 
-This package is available under the [MIT License](LICENSE).
+This package is available under the [MIT License](LICENSE.md).
 
 ## 📚 References
 

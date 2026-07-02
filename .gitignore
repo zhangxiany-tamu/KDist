@@ -49,6 +49,14 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
+# Compiled object files and shared libraries from R CMD INSTALL / SHLIB
+src/*.o
+src/*.so
+src/*.dll
+
+# Local tool settings
+.claude/
+
 # macOS specific files
 .DS_Store
 
